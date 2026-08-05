@@ -1,0 +1,2434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RateLens — Fixed Income Workbench</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    /* JPMorgan brand palette: bronze / travertine / black / white, sky blue accent */
+    --bg: #F4EFE7;          /* travertine */
+    --surface: #FFFFFF;
+    --surface-2: #ECE3D3;
+    --border: #DCD0BC;
+    --text: #16140F;
+    --muted: #6B6156;
+    --muted-2: #9C9084;
+
+    --nav-bg: #0A0A0A;
+    --nav-text: #B8AF9E;
+    --nav-text-active: #FFFFFF;
+
+    --accent: #8F5A39;      /* bronze */
+    --accent-light: #4F9FC7; /* deepened sky blue for AA contrast on white */
+    --accent-pale: #EFE1CE;
+
+    --green: #15803D;
+    --red: #A32E22;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    display:flex;
+    min-height:100vh;
+  }
+
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    width: 226px;
+    flex-shrink:0;
+    background: var(--nav-bg);
+    padding: 28px 20px;
+    display:flex;
+    flex-direction:column;
+    gap: 32px;
+  }
+  .nav-brand{
+    font-family:'Newsreader', serif;
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--nav-text-active);
+  }
+  .nav-brand span{ color: var(--accent-light); font-style: normal; }
+  .nav-links{ display:flex; flex-direction:column; gap: 4px; }
+  .nav-link{
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 13.5px;
+    color: var(--nav-text);
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    user-select: none;
+  }
+  .nav-link:hover{ color: var(--nav-text-active); }
+  .nav-link.active{
+    background: rgba(255,255,255,0.06);
+    color: var(--nav-text-active);
+    border-left: 2px solid var(--accent-light);
+    font-weight: 500;
+  }
+  .nav-footer{ margin-top:auto; font-size: 11px; color: #7A7266; line-height:1.6; }
+
+  .main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+
+  /* ---------- TICKER ---------- */
+  .ticker-strip{ display:flex; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x:auto; }
+  .ticker-item{ padding: 12px 18px; border-right: 1px solid var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; flex-shrink:0; }
+  .ticker-sym{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:0.5px; white-space:nowrap; }
+  .ticker-price{ font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; white-space:nowrap; }
+  .ticker-chg{ font-family:'JetBrains Mono',monospace; font-size:10.5px; white-space:nowrap; color:var(--muted-2); }
+  .up{ color: var(--green); }
+  .down{ color: var(--red); }
+
+  /* ---------- TOPBAR ---------- */
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding: 24px 32px 4px 32px; }
+  .page-heading{ font-family:'Newsreader',serif; font-size: 23px; font-weight:500; }
+  .page-sub{ font-size: 12.5px; color: var(--muted); margin-top:4px; }
+  .primary-btn{
+    font-family:'Inter',sans-serif; font-size: 13px; font-weight: 600; color: #fff;
+    background: var(--accent); border: none; padding: 10px 18px; border-radius: 7px; cursor: pointer;
+  }
+  .primary-btn:hover{ background: #7A4B2E; }
+  .ghost-btn{
+    font-family:'Inter',sans-serif; font-size: 12.5px; font-weight: 600; color: var(--accent);
+    background: var(--accent-pale); border: 1px solid #DDC7AC; padding: 8px 14px; border-radius: 7px; cursor: pointer;
+  }
+  .ghost-btn:hover{ background: var(--accent); color:#fff; }
+  select, input[type=text], input[type=number]{
+    font-family:'JetBrains Mono',monospace; font-size: 13px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 8px 12px;
+  }
+
+  .content{ padding: 22px 32px 44px 32px; display:flex; flex-direction:column; gap:26px; }
+  .page{ display:flex; flex-direction:column; gap:26px; }
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace; font-size: 11px; letter-spacing: 1.5px;
+    color: var(--accent); text-transform:uppercase; margin-bottom: 14px;
+  }
+
+  /* ---------- CARDS / GRIDS ---------- */
+  .grid4{ display:grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+  .grid5{ display:grid; grid-template-columns: 1.3fr repeat(4,1fr); gap: 14px; }
+  .stat-card{ background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .stat-card.hero{ background: linear-gradient(135deg, var(--accent-pale), var(--surface)); border: 1px solid #DDC7AC; }
+  .stat-label{ font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .stat-value{ font-family:'JetBrains Mono',monospace; font-size: 21px; font-weight: 600; }
+  .stat-sub{ font-family:'JetBrains Mono',monospace; font-size: 11.5px; margin-top: 6px; color: var(--muted); }
+
+  .watchlist-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .wl-card{ background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display:flex; flex-direction:column; gap: 10px; }
+  .wl-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .wl-ticker{ font-family:'JetBrains Mono',monospace; font-weight:600; font-size:14px; }
+  .wl-name{ font-size: 11px; color: var(--muted); margin-top:2px; }
+  .wl-price{ font-family:'JetBrains Mono',monospace; font-size: 16px; font-weight:600; text-align:right; }
+  .wl-metrics{ display:flex; justify-content:space-between; border-top: 1px solid var(--border); padding-top: 10px; font-family:'JetBrains Mono',monospace; font-size: 11px; color: var(--muted); }
+  .wl-metrics b{ color: var(--text); font-weight:500; }
+  .rating-pill{ font-family:'Inter',sans-serif; font-size: 10.5px; background: var(--accent-pale); color: var(--accent); padding: 3px 9px; border-radius: 20px; display:inline-block; }
+  .add-btn{ align-self:flex-start; font-family:'JetBrains Mono',monospace; font-size: 11px; color: var(--accent); border: 1px solid #DDC7AC; background: var(--accent-pale); padding: 5px 10px; border-radius: 5px; cursor:pointer; }
+  .add-btn.added{ background: var(--accent); color:#fff; }
+
+  /* ---------- TABLE ---------- */
+  .table-card{ background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table{ width:100%; border-collapse: collapse; }
+  thead tr{ background: var(--surface-2); }
+  th{ text-align:left; font-size: 10.5px; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); padding: 12px 16px; font-weight: 600; border-bottom: 1px solid var(--border); }
+  th.num, td.num{ text-align:right; }
+  td{ padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); font-family:'JetBrains Mono',monospace; }
+  tr:last-child td{ border-bottom:none; }
+  td.name-cell{ font-family:'Inter',sans-serif; }
+  tbody tr:hover{ background: #FBF8F2; }
+  td input[type=number]{ width:64px; padding:5px 8px; font-size:12.5px; }
+
+  .split{ display:grid; grid-template-columns: 1.1fr 1fr; gap: 22px; align-items:start; }
+  svg{ width:100%; height:auto; }
+
+  .footnote{ font-size: 11px; color: var(--muted-2); font-style: italic; font-family: 'Newsreader', serif; }
+  .callout{ background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 14px 18px; font-size: 13px; color: var(--muted); line-height:1.55; }
+  .callout b{ color: var(--text); }
+
+  .explainer{ background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--accent-light); border-radius: 8px; padding: 16px 18px; font-size: 13px; color: var(--text); line-height:1.6; }
+  .explainer-label{ font-family:'JetBrains Mono',monospace; font-size: 10.5px; letter-spacing: 1.2px; color: #2E7A9E; text-transform:uppercase; margin-bottom: 8px; font-weight:600; }
+
+  .field-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .field-row label{ font-size:12px; color:var(--muted); }
+
+  .scenario-row{ display:flex; gap:10px; }
+  .scenario-btn{
+    flex:1; text-align:center; padding: 14px 10px; border-radius:9px; border:1px solid var(--border);
+    background: var(--surface); cursor:pointer; font-family:'Inter',sans-serif;
+  }
+  .scenario-btn:hover{ border-color: var(--accent); }
+  .scenario-btn .label{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; }
+  .scenario-btn .val{ font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; margin-top:4px; }
+
+  .compare-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .compare-chip{
+    font-family:'JetBrains Mono',monospace; font-size:12px; padding:8px 14px; border-radius:20px;
+    border:1px solid var(--border); background:var(--surface); cursor:pointer; color:var(--muted); user-select:none;
+  }
+  .compare-chip:hover{ border-color: var(--accent); }
+  .compare-chip.active{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+
+  @media (max-width: 980px){
+    .grid4, .grid5, .watchlist-grid{ grid-template-columns: repeat(2,1fr); }
+    .split{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="nav">
+    <div class="nav-brand">Rate<span>Lens</span></div>
+    <div class="nav-links">
+      <div class="nav-link active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</div>
+      <div class="nav-link" data-page="valuation" onclick="showPage('valuation')">Bond Valuation</div>
+      <div class="nav-link" data-page="curve" onclick="showPage('curve')">Yield Curve</div>
+      <div class="nav-link" data-page="portfolio" onclick="showPage('portfolio')">Portfolio &amp; Risk</div>
+      <div class="nav-link" data-page="scenarios" onclick="showPage('scenarios')">Scenarios</div>
+      <div class="nav-link" data-page="comparison" onclick="showPage('comparison')">Comparison</div>
+      <div class="nav-link" data-page="derivatives" onclick="showPage('derivatives')">Derivatives</div>
+    </div>
+    <div class="nav-footer">
+      Govt curve: live-sourced<br>
+      as of 30 Jun 2026<br>
+      Corporates: illustrative mock
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="ticker-strip" id="tickerStrip"></div>
+
+    <div class="topbar">
+      <div>
+        <div class="page-heading" id="pageHeading">Dashboard</div>
+        <div class="page-sub" id="pageSub">Today's curve and bond watchlist</div>
+      </div>
+      <div id="topbarAction"></div>
+    </div>
+
+    <div class="content">
+      <div class="page" id="page-dashboard"></div>
+      <div class="page" id="page-valuation" style="display:none"></div>
+      <div class="page" id="page-curve" style="display:none"></div>
+      <div class="page" id="page-portfolio" style="display:none"></div>
+      <div class="page" id="page-scenarios" style="display:none"></div>
+      <div class="page" id="page-comparison" style="display:none"></div>
+      <div class="page" id="page-derivatives" style="display:none"></div>
+    </div>
+  </div>
+
+<script>
+/* =========================================================================
+   RATELENS — CALC LAYER
+   Pure functions from ratelens-bond-valuation, ratelens-yield-curve,
+   ratelens-macro-rate-drivers. Verified via node before embedding here —
+   the yield-curve bootstrap had a dollar-coupon scaling bug in the first
+   draft (caught during testing) and is fixed in this version.
+   ========================================================================= */
+
+function cashFlows(faceValue, couponRate, freq, periodsToMaturity) {
+  const coupon = (couponRate * faceValue) / freq;
+  const flows = new Array(periodsToMaturity).fill(coupon);
+  flows[periodsToMaturity - 1] += faceValue;
+  return flows;
+}
+function priceFromYield(faceValue, couponRate, freq, periodsToMaturity, yieldPerPeriod) {
+  const flows = cashFlows(faceValue, couponRate, freq, periodsToMaturity);
+  return flows.reduce((pv, cf, i) => pv + cf / Math.pow(1 + yieldPerPeriod, i + 1), 0);
+}
+function yieldFromPrice(faceValue, couponRate, freq, periodsToMaturity, marketPrice, guess = 0.05) {
+  const f = (y) => priceFromYield(faceValue, couponRate, freq, periodsToMaturity, y / freq) - marketPrice;
+  let y = guess, h = 1e-6;
+  for (let i = 0; i < 50; i++) {
+    const fy = f(y);
+    const dfy = (f(y + h) - f(y - h)) / (2 * h);
+    if (Math.abs(dfy) < 1e-10) break;
+    const yNext = y - fy / dfy;
+    if (Math.abs(yNext - y) < 1e-8) return yNext;
+    y = yNext;
+  }
+  let lo = -0.5, hi = 5.0;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    if (f(lo) * f(mid) <= 0) hi = mid; else lo = mid;
+  }
+  return (lo + hi) / 2;
+}
+function accruedInterest(faceValue, couponRate, freq, daysSinceLastCoupon, daysInPeriod) {
+  const couponAmt = (couponRate * faceValue) / freq;
+  return couponAmt * (daysSinceLastCoupon / daysInPeriod);
+}
+function macaulayDuration(faceValue, couponRate, freq, periodsToMaturity, yieldPerPeriod) {
+  const flows = cashFlows(faceValue, couponRate, freq, periodsToMaturity);
+  const price = flows.reduce((pv, cf, i) => pv + cf / Math.pow(1 + yieldPerPeriod, i + 1), 0);
+  const weightedT = flows.reduce((sum, cf, i) => {
+    const t = i + 1;
+    return sum + (t * cf) / Math.pow(1 + yieldPerPeriod, t);
+  }, 0);
+  return (weightedT / price) / freq;
+}
+function modifiedDuration(macD, yieldPerPeriod, freq) { return macD / (1 + yieldPerPeriod / freq); }
+function dv01(modD, price) { return modD * price * 0.0001; }
+function convexity(faceValue, couponRate, freq, periodsToMaturity, yieldPerPeriod) {
+  const flows = cashFlows(faceValue, couponRate, freq, periodsToMaturity);
+  const price = flows.reduce((pv, cf, i) => pv + cf / Math.pow(1 + yieldPerPeriod, i + 1), 0);
+  const sum = flows.reduce((acc, cf, i) => {
+    const t = i + 1;
+    return acc + (t * (t + 1) * cf) / Math.pow(1 + yieldPerPeriod, t + 2);
+  }, 0);
+  return (sum / price) / (freq * freq);
+}
+function discountYieldToBEY(d, daysToMaturity) { return (365 * d) / (360 - d * daysToMaturity); }
+
+function interpolateLinear(maturities, yields, target) {
+  if (target <= maturities[0]) return yields[0];
+  if (target >= maturities[maturities.length - 1]) return yields[yields.length - 1];
+  for (let i = 0; i < maturities.length - 1; i++) {
+    const t0 = maturities[i], t1 = maturities[i + 1];
+    if (target >= t0 && target <= t1) {
+      const w = (target - t0) / (t1 - t0);
+      return yields[i] + w * (yields[i + 1] - yields[i]);
+    }
+  }
+}
+function bootstrapSpotCurve(maturities, parYields, faceValue = 100) {
+  const zeros = [];
+  for (let i = 0; i < maturities.length; i++) {
+    const n = maturities[i];
+    const couponDollar = parYields[i] * faceValue;
+    if (i === 0) { zeros.push(parYields[i]); continue; }
+    let pvCoupons = 0;
+    for (let t = 1; t < n; t++) {
+      const zt = interpolateLinear(maturities.slice(0, i + 1), zeros.concat([parYields[i]]), t);
+      pvCoupons += couponDollar / Math.pow(1 + zt, t);
+    }
+    const target = faceValue - pvCoupons;
+    const zn = Math.pow((faceValue + couponDollar) / target, 1 / n) - 1;
+    zeros.push(zn);
+  }
+  return zeros;
+}
+function forwardRate(t1, t2, zeroRateFn) {
+  const z1 = zeroRateFn(t1), z2 = zeroRateFn(t2);
+  return Math.pow(Math.pow(1 + z2, t2) / Math.pow(1 + z1, t1), 1 / (t2 - t1)) - 1;
+}
+function zSpread(times, amounts, zeroRateFn, marketPrice) {
+  const priceAt = (z) => times.reduce((pv, t, i) => pv + amounts[i] / Math.pow(1 + zeroRateFn(t) + z, t), 0);
+  let lo = -0.05, hi = 0.20;
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo + hi) / 2;
+    const diff = priceAt(mid) - marketPrice, diffLo = priceAt(lo) - marketPrice;
+    if (diffLo * diff <= 0) hi = mid; else lo = mid;
+  }
+  return (lo + hi) / 2;
+}
+function curveShape(y) {
+  return {
+    spread2s10s: y['10Y'] - y['2Y'],
+    spread3m10y: y['10Y'] - y['3M'],
+    butterfly: 2 * y['5Y'] - y['2Y'] - y['10Y'],
+  };
+}
+function priceImpactFromYieldShock(modD, conv, deltaY) { return -modD * deltaY + 0.5 * conv * deltaY * deltaY; }
+
+/**
+ * Carry & roll-down: what a bond earns just from being held, over `horizonYears`, assuming the
+ * curve itself stays static (the standard convention). Two pieces:
+ *  - couponCarry: coupon income accrued over the horizon, as % of face.
+ *  - rollReturn: price gain from the bond "rolling down" to a shorter maturity on today's curve
+ *    (par bonds' yields fall as maturity shortens on an upward-sloping curve -> price rises).
+ * `spreadOverCurve` holds the bond's own credit spread constant while rolling it down the
+ * benchmark curve — skipping this for a corporate bond understates its "rolled-to" yield and
+ * wildly overstates roll return, since it would be rolling down the government curve instead of
+ * the bond's own curve.
+ */
+function carryRollDown(faceValue, couponRate, freq, years, price, horizonYears, curveInterpFn, spreadOverCurve = 0) {
+  const couponCarry = couponRate * horizonYears;
+  const newMaturity = Math.max(0.01, years - horizonYears);
+  const rolledYield = curveInterpFn(newMaturity) + spreadOverCurve;
+  const remainingPeriods = Math.max(1, Math.round(newMaturity * freq));
+  const rolledPrice = priceFromYield(faceValue, couponRate, freq, remainingPeriods, rolledYield / freq);
+  const rollReturn = (rolledPrice - price) / price;
+  return { couponCarry, rollReturn, totalCarryRoll: couponCarry + rollReturn, rolledYield, newMaturity };
+}
+
+/**
+ * Key rate duration via cashflow mapping: each cashflow's Macaulay-duration contribution (t_years * PV)
+ * is split between the two key-rate nodes that bracket its timing (linear/"hat" weighting), then the
+ * whole node-share vector is scaled so it sums exactly to the bond's already-computed modified duration.
+ * This is the standard practitioner shortcut for approximate KRD without rebuilding a full curve Jacobian
+ * (RiskMetrics/Barra-style cashflow mapping) — and scaling to match b.modD exactly (rather than deriving
+ * modified duration independently here) guarantees this reconciles with the duration shown elsewhere on
+ * the platform, which matters more for a demo than which of two equally standard conventions was used.
+ */
+function keyRateDuration(faceValue, couponRate, freq, years, price, ytm, modD, nodes) {
+  const n = years * freq;
+  const flows = cashFlows(faceValue, couponRate, freq, n);
+  const yPerPeriod = ytm / freq;
+  const nodeContrib = new Array(nodes.length).fill(0);
+  let totalContrib = 0;
+  flows.forEach((cf, i) => {
+    const period = i + 1;
+    const tYears = period / freq;
+    const pv = cf / Math.pow(1 + yPerPeriod, period);
+    const contrib = tYears * pv;
+    totalContrib += contrib;
+    if (tYears <= nodes[0]) { nodeContrib[0] += contrib; return; }
+    if (tYears >= nodes[nodes.length - 1]) { nodeContrib[nodes.length - 1] += contrib; return; }
+    for (let k = 0; k < nodes.length - 1; k++) {
+      if (tYears >= nodes[k] && tYears <= nodes[k + 1]) {
+        const w = (tYears - nodes[k]) / (nodes[k + 1] - nodes[k]);
+        nodeContrib[k] += (1 - w) * contrib;
+        nodeContrib[k + 1] += w * contrib;
+        break;
+      }
+    }
+  });
+  return nodeContrib.map(c => (c / totalContrib) * modD);
+}
+
+/** Same mapping for a single zero-coupon cashflow (T-bill) — all duration sits at one maturity point,
+    split across its two bracketing nodes the same way. */
+function keyRateDurationZero(maturityYears, modD, nodes) {
+  const krd = new Array(nodes.length).fill(0);
+  if (maturityYears <= nodes[0]) { krd[0] = modD; return krd; }
+  if (maturityYears >= nodes[nodes.length - 1]) { krd[nodes.length - 1] = modD; return krd; }
+  for (let k = 0; k < nodes.length - 1; k++) {
+    if (maturityYears >= nodes[k] && maturityYears <= nodes[k + 1]) {
+      const w = (maturityYears - nodes[k]) / (nodes[k + 1] - nodes[k]);
+      krd[k] = (1 - w) * modD;
+      krd[k + 1] = w * modD;
+      break;
+    }
+  }
+  return krd;
+}
+
+/**
+ * Multi-factor curve risk model — Level / Slope / Curvature / Spread, the standard PCA-style curve
+ * factor decomposition real risk systems (Bloomberg MAC3, Aladdin) use instead of naively summing
+ * individual bond risks. Level/Slope/Curvature are constructed to be approximately orthogonal, which
+ * is why their pairwise correlations below are ~0 — that's not an assumption of convenience, it's how
+ * real PCA-derived curve factors are built. Spread carries a small negative correlation to Level
+ * (flight-to-quality: spreads often widen when rates fall sharply in a stress regime) — illustrative,
+ * but the sign and the reasoning are real, not arbitrary.
+ */
+/** precomputedKrd is optional — pass the same array krdForInstrument(b, krdNodes) would return if
+    it's already been computed elsewhere this render pass (Portfolio & Risk builds it once and shares
+    it across the KRD table, the factor model, and Monte Carlo, instead of each recomputing the
+    cashflow-mapping from scratch). Falls back to computing it fresh if not provided. */
+function bondFactorExposures(b, krdNodes, precomputedKrd){
+  // Level = total modified duration (same convention as portfolio DV01 elsewhere on the platform).
+  const level = b.modD;
+  const krd = precomputedKrd || krdForInstrument(b, krdNodes);
+  // krdNodes = [0.25, 0.5, 1, 2, 5, 10, 30] -> indices: short=[0,1,2,3], pivot=4 (5Y), long=[5,6]
+  const shortDur = krd[0] + krd[1] + krd[2] + krd[3];
+  const longDur = krd[5] + krd[6];
+  const slope = longDur - shortDur; // positive = benefits from a flattener (long rallies vs short), negative = benefits from a steepener
+  const curvature = 2*krd[4] - krd[3] - krd[5]; // butterfly convention, matches curveShape() elsewhere
+  const spread = (b.type === 'Corporate') ? b.modD : 0; // simplification: every corporate assumed equally sensitive to one common spread factor (beta=1) — a real model would give HY names a higher beta than IG
+  return { level, slope, curvature, spread };
+}
+
+const FACTOR_NAMES = ['level','slope','curvature','spread'];
+// Daily factor vols (bp) — Level reuses DAILY_YIELD_VOL already assumed elsewhere on the platform for
+// consistency; Slope/Curvature/Spread are illustrative but ordered the way real curve factors actually
+// behave (level moves most, curvature least). No free live source for a real factor covariance matrix.
+const FACTOR_VOL_BP = { level: 5, slope: 3, curvature: 2, spread: 4 };
+const FACTOR_CORR = {
+  level:     { level:1,    slope:0,    curvature:0, spread:-0.2 },
+  slope:     { level:0,    slope:1,    curvature:0, spread:0.1  },
+  curvature: { level:0,    slope:0,    curvature:1, spread:0    },
+  spread:    { level:-0.2, slope:0.1,  curvature:0, spread:1    },
+};
+
+/** holdingsKRD (optional): { bondId: krdArray }, shared with the KRD table section so the cashflow
+    mapping runs once per bond per render instead of once per section that needs it. */
+function portfolioFactorExposures(krdNodes, holdingsKRD){
+  const exp = { level:0, slope:0, curvature:0, spread:0 };
+  ALL_INSTRUMENTS.forEach(b=>{
+    const w = portfolioWeights[b.id];
+    if(w === undefined) return;
+    const fe = bondFactorExposures(b, krdNodes, holdingsKRD && holdingsKRD[b.id]);
+    FACTOR_NAMES.forEach(f => exp[f] += w * fe[f]);
+  });
+  return exp;
+}
+
+/** Computes key rate duration once per current portfolio holding — shared by the KRD table, the
+    factor model, and Monte Carlo, all of which otherwise independently re-run the same cashflow
+    mapping for the same bonds within a single Portfolio & Risk render. */
+function computeHoldingsKRD(krdNodes){
+  const map = {};
+  ALL_INSTRUMENTS.forEach(b=>{
+    if(portfolioWeights[b.id] === undefined) return;
+    map[b.id] = krdForInstrument(b, krdNodes);
+  });
+  return map;
+}
+
+/** Diversified portfolio risk via w'Σw, vs. a naive sum assuming perfect correlation across factors —
+    the gap between the two IS the diversification benefit, shown explicitly rather than asserted. */
+function factorPortfolioRisk(exposures){
+  let variance = 0;
+  FACTOR_NAMES.forEach(fi=>{
+    FACTOR_NAMES.forEach(fj=>{
+      const covBp = FACTOR_VOL_BP[fi] * FACTOR_VOL_BP[fj] * FACTOR_CORR[fi][fj]; // bp^2
+      variance += exposures[fi] * exposures[fj] * covBp / 10000 / 10000; // exposures are $/100face/bp, covBp in bp^2 -> convert to (1bp)^2 units consistently
+    });
+  });
+  const diversifiedStd = Math.sqrt(Math.max(0,variance)); // $ per 100 face, 1-day std dev
+  const naiveSum = FACTOR_NAMES.reduce((s,f)=> s + Math.abs(exposures[f]) * FACTOR_VOL_BP[f]/10000, 0);
+  return { diversifiedStd, naiveSum, diversificationBenefit: naiveSum > 0 ? (1 - diversifiedStd/naiveSum) : 0 };
+}
+
+/* =========================================================================
+   MONTE CARLO / FAT-TAILED VaR — draws correlated factor shocks from the SAME factor model above via
+   Cholesky decomposition, so this isn't a separate risk framework bolted on — it's what the factor
+   model implies once you simulate it instead of solving it in closed form. Seeded PRNG so results are
+   reproducible run to run unless the user explicitly re-runs.
+   ========================================================================= */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function boxMuller(rng){
+  const u1 = Math.max(1e-12, rng()), u2 = rng();
+  return Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+}
+/** Cholesky decomposition for the small 4x4 correlation matrix — standard method for turning
+    independent normal draws into correlated ones (L * z = correlated draw, Sigma = L*L'). */
+function choleskyFactor(){
+  const n = FACTOR_NAMES.length;
+  const A = FACTOR_NAMES.map(fi => FACTOR_NAMES.map(fj => FACTOR_CORR[fi][fj]));
+  const L = Array.from({length:n}, () => new Array(n).fill(0));
+  for(let i=0;i<n;i++){
+    for(let j=0;j<=i;j++){
+      let sum = 0;
+      for(let k=0;k<j;k++) sum += L[i][k]*L[j][k];
+      if(i===j) L[i][j] = Math.sqrt(Math.max(0, A[i][i]-sum));
+      else L[i][j] = (A[i][j]-sum) / (L[j][j] || 1e-9);
+    }
+  }
+  return L;
+}
+/** Runs nPaths simulations of correlated factor shocks, returns sorted portfolio $ P&L array.
+    fatTailed=true mixes in an occasional amplified draw (scale mixture of normals) — a simple, honest
+    way to fatten tails without a full Student-t sampler, and the point (tails matter) comes through
+    either way. */
+function runMonteCarloVar(exposures, nPaths, seed, fatTailed){
+  const rng = mulberry32(seed);
+  const L = choleskyFactor();
+  const n = FACTOR_NAMES.length;
+  const pnls = [];
+  for(let p=0; p<nPaths; p++){
+    const z = FACTOR_NAMES.map(()=>boxMuller(rng));
+    let tailMult = 1;
+    if(fatTailed && rng() < 0.05) tailMult = 3 + rng()*2; // ~5% chance of a 3-5x amplified shock
+    const corrShocksBp = new Array(n).fill(0);
+    for(let i=0;i<n;i++){
+      let s = 0;
+      for(let k=0;k<=i;k++) s += L[i][k]*z[k];
+      corrShocksBp[i] = s * FACTOR_VOL_BP[FACTOR_NAMES[i]] * tailMult;
+    }
+    let fractionalReturn = 0;
+    FACTOR_NAMES.forEach((f,i)=>{ fractionalReturn += -exposures[f] * corrShocksBp[i]/10000; });
+    pnls.push(fractionalReturn * portfolioValue);
+  }
+  pnls.sort((a,b)=>a-b);
+  const pct = (p) => pnls[Math.max(0, Math.min(pnls.length-1, Math.floor(p*pnls.length)))];
+  const var95 = -pct(0.05), var99 = -pct(0.01);
+  const worst5pct = pnls.slice(0, Math.max(1,Math.floor(0.05*pnls.length)));
+  const cvar95 = -(worst5pct.reduce((a,b)=>a+b,0)/worst5pct.length);
+  return { var95, var99, cvar95, pnls };
+}
+
+/**
+ * Return attribution — the CFA-standard carry / curve / spread decomposition. Reuses carryRollDown for
+ * the carry+roll leg and the existing duration/convexity price-impact formula for the other two legs,
+ * so this is entirely a re-stitching of calc already in the platform, not a new pricing model.
+ */
+function returnAttribution(b, horizonYears, curveShockY, spreadShockY) {
+  const carry = carryRollDown(b.face, b.coupon, b.freq, b.years, b.price, horizonYears, parCurveFn, b.nominalSpread);
+  const curveEffect = priceImpactFromYieldShock(b.modD, b.conv, curveShockY);
+  const spreadEffect = priceImpactFromYieldShock(b.modD, 0, spreadShockY);
+  const total = carry.totalCarryRoll + curveEffect + spreadEffect;
+  return { carry: carry.totalCarryRoll, curveEffect, spreadEffect, total, carryDetail: carry };
+}
+
+/* =========================================================================
+   DATA — government curve is LIVE-SOURCED (Treasury.gov daily par yield
+   curve, home.treasury.gov CSV feed). Most recent pull available: 2026-06-30
+   — that's Treasury's own publication lag from "today" (Aug 2026), not a
+   bug in this page. Corporates (JPM/AAPL/TSLA) remain illustrative mock —
+   no free public source prices individual corporate bonds; see README for
+   the LSEG wiring path once that connector is authorized.
+   ========================================================================= */
+
+const CURVE_DATE = '2026-06-30';
+const CURVE_SOURCE = 'home.treasury.gov — Daily Treasury Par Yield Curve Rates';
+const CURVE_LABELS = ['3M','6M','1Y','2Y','5Y','10Y','30Y'];
+const CURVE_YIELDS = [0.0387, 0.0401, 0.0398, 0.0414, 0.0419, 0.0444, 0.0491];
+const CURVE_TENOR_YEARS = { '3M':0.25, '6M':0.5, '1Y':1, '2Y':2, '5Y':5, '10Y':10, '30Y':30 };
+// Hoisted once — this used to get rebuilt via CURVE_LABELS.map(...) on every parCurveFn() call (and
+// parCurveFn is called dozens of times per render across the curve/valuation/derivatives sections).
+const CURVE_TENOR_ARR = CURVE_LABELS.map(l => CURVE_TENOR_YEARS[l]);
+const FED_FUNDS = 0.0363; // separately sourced, Federal Reserve H.15 — not re-pulled in this update
+
+const BOOTSTRAP_TENORS = [1,2,5,10,30];
+const BOOTSTRAP_PAR = [0.0398,0.0414,0.0419,0.0444,0.0491];
+const ZERO_RATES = bootstrapSpotCurve(BOOTSTRAP_TENORS, BOOTSTRAP_PAR);
+const FULL_ZERO_MATS = [0.25, 0.5, ...BOOTSTRAP_TENORS];
+const FULL_ZERO_VALS = [0.0387, 0.0401, ...ZERO_RATES];
+const zeroRateFn = (t) => interpolateLinear(FULL_ZERO_MATS, FULL_ZERO_VALS, t);
+const parCurveFn = (t) => interpolateLinear(CURVE_TENOR_ARR, CURVE_YIELDS, t);
+
+// Illustrative mock — auction calendar (no free public forward calendar to pull; upcoming schedule
+// is announced by Treasury roughly a month ahead, so this is representative cadence, not a live feed).
+const AUCTION_CALENDAR = [
+  { date:'2026-07-08', tenor:'3-Month Bill', size:'$85B' },
+  { date:'2026-07-08', tenor:'6-Month Bill', size:'$80B' },
+  { date:'2026-07-09', tenor:'2-Year Note',  size:'$66B' },
+  { date:'2026-07-10', tenor:'5-Year Note',  size:'$70B' },
+  { date:'2026-07-11', tenor:'7-Year Note',  size:'$44B' },
+  { date:'2026-07-15', tenor:'3-Month Bill', size:'$85B' },
+  { date:'2026-07-24', tenor:'10-Year Note (reopening)', size:'$42B' },
+  { date:'2026-07-25', tenor:'30-Year Bond (reopening)', size:'$25B' },
+];
+
+// Watchlist rules — evaluated live against computed data on each Dashboard render.
+const WATCHLIST_RULES = [
+  { label:'10Y Treasury yield', test:() => CURVE_YIELDS[5] > 0.045, watch:() => CURVE_YIELDS[5] > 0.043, valueFn:() => pct(CURVE_YIELDS[5]), note:'alert if 10Y crosses 4.50%' },
+  { label:'30Y Treasury yield', test:() => CURVE_YIELDS[6] > 0.050, watch:() => CURVE_YIELDS[6] > 0.048, valueFn:() => pct(CURVE_YIELDS[6]), note:'alert if 30Y crosses 5.00%' },
+  { label:'2s10s spread', test:() => (CURVE_YIELDS[5]-CURVE_YIELDS[3]) < 0, watch:() => (CURVE_YIELDS[5]-CURVE_YIELDS[3]) < 0.0025, valueFn:() => bp(CURVE_YIELDS[5]-CURVE_YIELDS[3],0), note:'watch for inversion (<0bp)' },
+  { label:'TSLA7Y Z-spread', test:() => BONDS.find(b=>b.id==='TSLA7Y').z > 0.025, watch:() => BONDS.find(b=>b.id==='TSLA7Y').z > 0.020, valueFn:() => bp(BONDS.find(b=>b.id==='TSLA7Y').z,0), note:'alert if spread widens past 250bp' },
+  { label:'JPM5Y Z-spread', test:() => BONDS.find(b=>b.id==='JPM5Y').z > 0.010, watch:() => BONDS.find(b=>b.id==='JPM5Y').z > 0.008, valueFn:() => bp(BONDS.find(b=>b.id==='JPM5Y').z,0), note:'alert if spread widens past 100bp' },
+];
+
+// Real monthly par-curve snapshots, same live source — powers the Curve History section.
+const CURVE_HISTORY = [
+  { date:'2026-01-30', yields:[0.0367,0.0361,0.0348,0.0352,0.0379,0.0426,0.0487] },
+  { date:'2026-02-27', yields:[0.0367,0.0360,0.0348,0.0338,0.0351,0.0397,0.0464] },
+  { date:'2026-03-31', yields:[0.0370,0.0372,0.0368,0.0379,0.0392,0.0430,0.0488] },
+  { date:'2026-04-30', yields:[0.0368,0.0371,0.0372,0.0388,0.0402,0.0440,0.0498] },
+  { date:'2026-05-29', yields:[0.0369,0.0378,0.0379,0.0398,0.0413,0.0445,0.0499] },
+  { date:'2026-06-30', yields:[0.0387,0.0401,0.0398,0.0414,0.0419,0.0444,0.0491] },
+];
+
+/* =========================================================================
+   TIPS / REAL YIELD CURVE — real, sourced TIPS points, mixed vintage (flagged, not hidden — TIPS real
+   yields moved a lot through 2026, and the freshest read available per tenor came from different dates).
+   ========================================================================= */
+const REAL_CURVE_POINTS = [
+  { label:'5Y',  years:5,  yield:0.0214, asOf:'2026-07-30', source:'secondary market read, tradingeconomics/macromicro' },
+  { label:'10Y', years:10, yield:0.0199, asOf:'2026-04-07', source:'FRED DFII10' },
+  { label:'30Y', years:30, yield:0.0270, asOf:'2026-03-23', source:'FRED DFII30' },
+];
+const realCurveFn = (t) => interpolateLinear(REAL_CURVE_POINTS.map(p=>p.years), REAL_CURVE_POINTS.map(p=>p.yield), t);
+// Directly-quoted market breakeven, for cross-checking the curve-implied one below (they won't match
+// exactly — different vintages feed each curve, which is itself worth seeing rather than hiding).
+const QUOTED_10Y_BREAKEVEN = { value: 0.0224, asOf:'2026-07-23', source:'FRED T10YIE' };
+
+// Illustrative TIPS instruments — real coupon and real yield curve are real inputs; the index ratio
+// (cumulative CPI accretion since issuance) is illustrative since no live CPI-index feed is wired in.
+// Priced on a REAL basis (price per 100 of ORIGINAL face, real coupon discounted at the real yield) —
+// this is exactly how TIPS actually quote; the nominal settlement amount separately multiplies by the
+// index ratio. Duration/DV01 here are REAL, not nominal-equivalent — a genuine TIPS nuance, not a shortcut.
+const TIPS_BONDS = [
+  { id:'TIPS10Y', name:'US TIPS 10Y', years:10, freq:2, face:100, realCoupon:0.02125, indexRatio:1.14 },
+  { id:'TIPS30Y', name:'US TIPS 30Y', years:30, freq:2, face:100, realCoupon:0.02625, indexRatio:1.22 },
+];
+TIPS_BONDS.forEach(t=>{
+  const n = t.years*t.freq;
+  const realYtm = realCurveFn(t.years);
+  t.n = n;
+  t.realYtm = realYtm;
+  t.realPrice = priceFromYield(t.face, t.realCoupon, t.freq, n, realYtm/t.freq);
+  t.realMacD = macaulayDuration(t.face, t.realCoupon, t.freq, n, realYtm/t.freq);
+  t.realModD = modifiedDuration(t.realMacD, realYtm/t.freq, t.freq);
+  t.realDV01 = dv01(t.realModD, t.realPrice);
+  t.adjustedPrincipal = t.face * t.indexRatio;
+  t.nominalSettlement = (t.realPrice/100) * t.adjustedPrincipal;
+});
+
+/* =========================================================================
+   INTERNATIONAL CURVES — real, sourced 2Y/10Y/30Y points for Japan, Germany, UK, mixed vintage per
+   tenor (flagged per point, same honesty convention as the TIPS curve above). Only 3 points each, so
+   these are compared at matching tenors rather than fully bootstrapped/interpolated like the US curve.
+   ========================================================================= */
+const INTL_CURVES = {
+  JGB:  { label:'Japan (JGB)',   points:[
+            {tenor:2, years:2,  yield:0.0135, asOf:'2026-04-01'},
+            {tenor:10,years:10, yield:0.0285, asOf:'2026-08-04'},
+            {tenor:30,years:30, yield:0.0362, asOf:'2026-04-01'},
+          ], source:'tradingeconomics.com JGB series' },
+  BUND: { label:'Germany (Bund)', points:[
+            {tenor:2, years:2,  yield:0.02846, asOf:'2026-08-04'},
+            {tenor:10,years:10, yield:0.0311,  asOf:'2026-08-04'},
+            {tenor:30,years:30, yield:0.0348,  asOf:'2026-04-06'},
+          ], source:'tradingeconomics.com Germany bond series' },
+  GILT: { label:'UK (Gilt)',     points:[
+            {tenor:2, years:2,  yield:0.0443, asOf:'2026-03-23'},
+            {tenor:10,years:10, yield:0.0497, asOf:'2026-08-05'},
+            {tenor:30,years:30, yield:0.0545, asOf:'2026-04-01'},
+          ], source:'tradingeconomics.com / DMO Gilt series' },
+};
+function intlYieldAt(curveKey, tenor){
+  const pt = INTL_CURVES[curveKey].points.find(p=>p.tenor===tenor);
+  return pt ? pt.yield : null;
+}
+
+/* =========================================================================
+   DERIVATIVES — Treasury futures (illustrative CTD/conversion factors, no live deliverable-basket feed
+   exists for this) and par swap rates (Treasury curve + an illustrative but real, structurally-grounded
+   swap spread — real swaps discount off SOFR/OIS, not the Treasury curve, which is why a spread is
+   applied explicitly here rather than derived from a single shared curve).
+   ========================================================================= */
+const FUTURES_SPEC = [
+  { id:'ZF', label:'5-Year T-Note Futures',  tenor:5,  notional:100000, convFactor:0.90 },
+  { id:'ZN', label:'10-Year T-Note Futures', tenor:10, notional:100000, convFactor:0.85 },
+  { id:'ZB', label:'Classic T-Bond Futures', tenor:25, notional:100000, convFactor:0.78 },
+];
+function futuresContractDV01(spec){
+  // CTD proxy: an on-the-run-style note/bond priced at par, coupon = today's par yield at that tenor —
+  // illustrative deliverable, not a live CTD screen (no free public feed for the deliverable basket).
+  const parYield = parCurveFn(spec.tenor);
+  const n = Math.round(spec.tenor*2);
+  const ctdMacD = macaulayDuration(100, parYield, 2, n, parYield/2);
+  const ctdModD = modifiedDuration(ctdMacD, parYield/2, 2);
+  const ctdDV01 = dv01(ctdModD, 100); // $ per 100 face, per 1bp
+  const futuresDV01PerContract = (ctdDV01/100) * spec.notional / spec.convFactor; // $ per contract, per 1bp
+  return { parYield, ctdModD, ctdDV01, futuresDV01PerContract };
+}
+
+const SWAP_TENORS = [2, 5, 10, 30];
+// Illustrative — real USD swap spreads have been structurally negative for years (dealer balance-sheet
+// costs post-2008, heavy Treasury supply, insurance/LDI receiving demand at the long end), but no free
+// live feed exists for the exact current level, so these are representative magnitudes, not a data pull.
+const SWAP_SPREAD_BP = { 2: -5, 5: -20, 10: -40, 30: -75 };
+function swapParRate(tenor){
+  const treasuryYield = parCurveFn(tenor);
+  return treasuryYield + SWAP_SPREAD_BP[tenor]/10000;
+}
+function swapDV01Per1mm(tenor){
+  const fixedRate = swapParRate(tenor);
+  const n = tenor*2;
+  const macD = macaulayDuration(100, fixedRate, 2, n, fixedRate/2);
+  const modD = modifiedDuration(macD, fixedRate/2, 2);
+  return modD * 1000000 * 0.0001; // $ per 1bp, per $1mm notional — fixed leg is priced at par by construction
+}
+
+// Bond prices below are derived (not guessed): price = priceFromYield(coupon, targetYTM) for a
+// chosen "as-issued" coupon against a target yield consistent with the live curve above, so the
+// live YTM solve in the Bond Valuation tab reproduces that target exactly. Corporates target
+// realistic, illustrative spreads over the live benchmark at their maturity (JPM ~90bp A-,
+// Apple ~30bp AA+, Tesla ~280bp BB+) — spread levels, not the prices themselves, are the mock input.
+const BONDS = [
+  { id:'UST2Y',   name:'US Treasury 2Y',      type:'Sovereign', rating:'AA+', coupon:0.03750, freq:2, years:2,  face:100, price:99.259 },
+  { id:'UST10Y',  name:'US Treasury 10Y',     type:'Sovereign', rating:'AA+', coupon:0.04250, freq:2, years:10, face:100, price:98.479 },
+  { id:'UST30Y',  name:'US Treasury 30Y',     type:'Sovereign', rating:'AA+', coupon:0.04500, freq:2, years:30, face:100, price:93.598 },
+  { id:'JPM5Y',   name:'JPMorgan Chase 5Y',   type:'Corporate', rating:'A-',  coupon:0.04750, freq:2, years:5,  face:100, price:98.516 },
+  { id:'AAPL10Y', name:'Apple Inc 10Y',       type:'Corporate', rating:'AA+', coupon:0.04375, freq:2, years:10, face:100, price:97.120 },
+  { id:'TSLA7Y',  name:'Tesla Inc 7Y',        type:'Corporate', rating:'BB+', coupon:0.06500, freq:2, years:7,  face:100, price:96.788 },
+  // Expanded universe — 10 more real, widely-traded corporate issuers spanning AAA to B+, so a 5-bond
+  // portfolio can span sectors/ratings and actually show different behavior across the platform's
+  // metrics. Prices are derived the same way as the original three: priceFromYield(coupon, target YTM)
+  // where target YTM = live benchmark at that maturity + an illustrative spread (spread level is the
+  // mock input, not the price). See RateLens_Trader_Feature_List.md sources for where spread levels came from.
+  { id:'MSFT10Y', name:'Microsoft Corp 10Y',       type:'Corporate', rating:'AAA', coupon:0.04625, freq:2, years:10, face:100, price:100.040 },
+  { id:'JNJ7Y',   name:'Johnson & Johnson 7Y',     type:'Corporate', rating:'AAA', coupon:0.04500, freq:2, years:7,  face:100, price:100.358 },
+  { id:'BRK5Y',   name:'Berkshire Hathaway 5Y',    type:'Corporate', rating:'AA',  coupon:0.04625, freq:2, years:5,  face:100, price:100.155 },
+  { id:'WMT10Y',  name:'Walmart Inc 10Y',          type:'Corporate', rating:'AA',  coupon:0.04750, freq:2, years:10, face:100, price:100.079 },
+  { id:'XOM10Y',  name:'ExxonMobil Corp 10Y',      type:'Corporate', rating:'AA-', coupon:0.04875, freq:2, years:10, face:100, price:99.882 },
+  { id:'BAC5Y',   name:'Bank of America 5Y',       type:'Corporate', rating:'A-',  coupon:0.05125, freq:2, years:5,  face:100, price:99.935 },
+  { id:'VZ10Y',   name:'Verizon Communications 10Y', type:'Corporate', rating:'BBB+', coupon:0.05875, freq:2, years:10, face:100, price:100.262 },
+  { id:'F7Y',     name:'Ford Motor Credit 7Y',     type:'Corporate', rating:'BB+', coupon:0.06750, freq:2, years:7,  face:100, price:99.780 },
+  { id:'OXY7Y',   name:'Occidental Petroleum 7Y',  type:'Corporate', rating:'BB+', coupon:0.06625, freq:2, years:7,  face:100, price:100.194 },
+  { id:'CCL5Y',   name:'Carnival Corp 5Y',         type:'Corporate', rating:'B+',  coupon:0.08375, freq:2, years:5,  face:100, price:99.940 },
+];
+const TBILL = { id:'TBILL6M', name:'US T-Bill 6M', type:'Bill', rating:'AA+', discountYield:0.0385, daysToMaturity:182, face:100 };
+
+// Compute + cache metrics for every coupon bond
+BONDS.forEach(b => {
+  const n = b.years * b.freq;
+  b.n = n;
+  b.ytm = yieldFromPrice(b.face, b.coupon, b.freq, n, b.price);
+  b.macD = macaulayDuration(b.face, b.coupon, b.freq, n, b.ytm / b.freq);
+  b.modD = modifiedDuration(b.macD, b.ytm / b.freq, b.freq);
+  b.conv = convexity(b.face, b.coupon, b.freq, n, b.ytm / b.freq);
+  b.dv01 = dv01(b.modD, b.price);
+  b.currentYield = (b.coupon * b.face) / b.price;
+  const flows = cashFlows(b.face, b.coupon, b.freq, n);
+  const times = flows.map((_, i) => (i + 1) / b.freq);
+  b.z = zSpread(times, flows, zeroRateFn, b.price);
+  const benchmarkY = interpolateLinear(CURVE_TENOR_ARR, CURVE_YIELDS, b.years);
+  b.nominalSpread = b.ytm - benchmarkY;
+});
+TBILL.bey = discountYieldToBEY(TBILL.discountYield, TBILL.daysToMaturity);
+TBILL.price = TBILL.face * (1 - TBILL.discountYield * TBILL.daysToMaturity / 360);
+TBILL.modD = TBILL.daysToMaturity / 365; // zero-coupon: Macaulay = time to maturity
+TBILL.conv = 0;
+TBILL.dv01 = dv01(TBILL.modD, TBILL.price);
+TBILL.ytm = TBILL.bey;
+
+const ALL_INSTRUMENTS = [...BONDS, TBILL];
+
+/** Key rate nodes — same tenors as the curve itself, so KRD results read directly against the curve tab. */
+const KEY_RATE_NODES = [0.25, 0.5, 1, 2, 5, 10, 30];
+
+function krdForInstrument(b, nodes) {
+  if (b.type === 'Bill') return keyRateDurationZero(b.daysToMaturity / 365, b.modD, nodes);
+  return keyRateDuration(b.face, b.coupon, b.freq, b.years, b.price, b.ytm, b.modD, nodes);
+}
+
+/**
+ * Historical scenario replay — real, sourced curve moves from three episodes, re-shaped as key-rate node
+ * deltas (bp) so they can run through the same KRD engine instead of a single parallel number. The 2026
+ * JGB row is explicitly two different things: a REAL Japanese move (cited) translated into an ILLUSTRATIVE
+ * US spillover (labeled as such) — RateLens prices USD instruments, so the JGB shock itself isn't directly
+ * applicable; what's modeled is the correlated US long-end reaction that the same source describes.
+ */
+const HISTORICAL_SCENARIOS = {
+  hiking2022: {
+    label: '2022 Fed Hiking Cycle',
+    period: 'Jan–Oct 2022',
+    deltasBp: [350, 380, 400, 390, 300, 260, 200],
+    note: 'Fastest Fed hiking cycle in four decades. 2Y rose ~390bp (≈0.78%→4.7%), 10Y rose ~260bp (≈1.63%→4.25%) — a textbook bear flattener, front end repricing Fed policy far faster than the long end.',
+    source: 'St. Louis Fed, "The Many Interest Rates in 2022"; Treasury.gov daily par curve archive',
+  },
+  svb2023: {
+    label: 'March 2023 SVB Shock',
+    period: 'Mar 8–13, 2023',
+    deltasBp: [-20, -60, -90, -100, -70, -50, -35],
+    note: '2Y fell ~100bp in three days after Silicon Valley Bank\'s collapse — the largest 3-day decline since 1987 — as markets repriced a faster Fed pause/cut path. Front end moved far more than the back end: a sharp bull flattener of the inversion, not a broad rally.',
+    source: 'CNBC, "2-year Treasury yield posts biggest 3-day decline since 1987 stock crash," Mar 13 2023',
+  },
+  jgb2026: {
+    label: 'Jan 2026 JGB Contagion',
+    period: 'Jan 20, 2026 (JGB move); illustrative US spillover',
+    deltasBp: [0, 0, 2, 3, 5, 8, 15],
+    note: 'Real move was in Japan: 30Y JGB jumped ~25-30bp in a single session (largest since 1999) on BOJ policy and fiscal-discipline concerns, 40Y JGB approached 4%. The row modeled here is an ILLUSTRATIVE US long-end spillover (global term-premium contagion channel), not the JGB move itself — RateLens doesn\'t price JGBs.',
+    source: 'CNBC, "Japan\'s bond market is back in play after decades in the wilderness," Jul 14 2026',
+  },
+};
+
+/** Illustrative execution/liquidity estimates — no free public TCA feed exists for this, same honesty
+    convention as the auction calendar and credit spread curve: clearly mock, formula-free lookup, not a
+    model dressed up to look precise. */
+const EXECUTION_ESTIMATES = {
+  UST2Y:   { bidAskBp: 0.5, daysToLiquidate: '<1 day',  liquidity: 'Deep — on-the-run adjacent' },
+  UST10Y:  { bidAskBp: 0.8, daysToLiquidate: '<1 day',  liquidity: 'Deepest market in the world' },
+  UST30Y:  { bidAskBp: 1.5, daysToLiquidate: '<1 day',  liquidity: 'Deep, slightly wider than belly' },
+  JPM5Y:   { bidAskBp: 8,   daysToLiquidate: '1-2 days', liquidity: 'Liquid IG financial credit' },
+  AAPL10Y: { bidAskBp: 5,   daysToLiquidate: '1-2 days', liquidity: 'Liquid IG tech credit, large issuer' },
+  TSLA7Y:  { bidAskBp: 35,  daysToLiquidate: '3-5 days', liquidity: 'Thinner HY credit, wider two-way' },
+  TBILL6M: { bidAskBp: 0.3, daysToLiquidate: '<1 day',  liquidity: 'Money-market depth' },
+  MSFT10Y: { bidAskBp: 3,   daysToLiquidate: '<1 day',  liquidity: 'Mega-cap IG, very liquid' },
+  JNJ7Y:   { bidAskBp: 3,   daysToLiquidate: '<1 day',  liquidity: 'Mega-cap IG, very liquid' },
+  BRK5Y:   { bidAskBp: 4,   daysToLiquidate: '1 day',   liquidity: 'Liquid IG conglomerate credit' },
+  WMT10Y:  { bidAskBp: 4,   daysToLiquidate: '<1 day',  liquidity: 'Liquid IG retail credit' },
+  XOM10Y:  { bidAskBp: 4,   daysToLiquidate: '1 day',   liquidity: 'Liquid IG energy major' },
+  BAC5Y:   { bidAskBp: 8,   daysToLiquidate: '1-2 days', liquidity: 'Liquid IG financial credit' },
+  VZ10Y:   { bidAskBp: 10,  daysToLiquidate: '2 days',  liquidity: 'Liquid IG telecom, event-risk aware' },
+  F7Y:     { bidAskBp: 28,  daysToLiquidate: '3-4 days', liquidity: 'Crossover auto credit' },
+  OXY7Y:   { bidAskBp: 22,  daysToLiquidate: '3 days',  liquidity: 'Crossover energy credit' },
+  CCL5Y:   { bidAskBp: 45,  daysToLiquidate: '5-7 days', liquidity: 'True high yield, widest two-way here' },
+};
+// Three illustrative dealer offsets (bp from mid) — fixed, not live, so the RFQ table doesn't flicker on re-render.
+const DEALER_OFFSETS_BP = [-0.6, 0.0, 0.5];
+const DEALER_NAMES = ['Dealer A', 'Dealer B (ref.)', 'Dealer C'];
+
+/** Credit fundamentals — real, sourced figures (Q1-Q2 2026 / trailing FY2025-26 filings and reporting).
+    Deliberately NOT a uniform template: banks report capital ratios, not Debt/EBITDA; a couple of these
+    mega-caps run net interest INCOME (more cash than debt), where a coverage ratio doesn't apply cleanly;
+    a captive auto-finance subsidiary's leverage isn't comparable to an industrial's. Forcing every issuer
+    into the same two fields would have meant fabricating numbers that don't actually exist — `stats` is a
+    free-form list per issuer instead, showing only what's actually reported and sourced. */
+const CREDIT_FUNDAMENTALS = {
+  JPM5Y: {
+    stats: [ {label:'CET1 Ratio', value:'14.3%', sub:'standardized, Q1 2026'}, {label:'Tier 1 Capital Ratio', value:'15.5%', sub:'Dec 2025'} ],
+    note: 'CET1 comfortably above both the ~4.5% regulatory baseline and JPM\'s own higher GSIB-adjusted requirement — capital strength, not a leverage ratio, is the right credit lens for a bank.',
+    source: 'JPMorgan Chase Q1 2026 8-K / Dec 2025 10-K capital disclosures',
+  },
+  AAPL10Y: {
+    stats: [ {label:'Net Debt / EBITDA', value:'0.35x', sub:'leverage'}, {label:'Interest Coverage', value:'670x', sub:'EBIT/Interest'} ],
+    note: 'Near-zero effective leverage and interest coverage in the hundreds — the ~30bp Z-spread this bond trades at is fully explained by balance-sheet strength, not a modeling artifact.',
+    source: 'GuruFocus / Finbox trailing financials, as of Feb 2026',
+  },
+  TSLA7Y: {
+    stats: [ {label:'Net Debt / EBITDA', value:'-2.2x', sub:'net cash position'}, {label:'Gross Debt / EBITDA', value:'1.64x', sub:'before netting cash'}, {label:'Interest Coverage', value:'16.6x', sub:'declining since 2023'} ],
+    note: 'Net cash position (more cash than debt) — the ~280bp Z-spread on this bond is hard to justify on balance-sheet leverage alone. More likely explanation: business/margin volatility and equity-like risk perception, not insolvency risk. Interest coverage has been declining since 2023, which is the metric actually worth tracking here, not leverage.',
+    source: 'GuruFocus / Finbox trailing financials, as of Mar 2026',
+  },
+  MSFT10Y: {
+    stats: [ {label:'Interest Coverage', value:'49.4x', sub:'EBIT/Interest, Mar 2026'}, {label:'Debt / Equity', value:'0.07x', sub:'FY2026'} ],
+    note: 'Among the lowest-leverage large-cap balance sheets in the market — the ~18bp spread here is balance-sheet strength, not a modeling gap.',
+    source: 'GuruFocus trailing financials, as of Mar 2026',
+  },
+  JNJ7Y: {
+    stats: [ {label:'Interest Coverage', value:'net income > interest', sub:'earns more interest than it pays'}, {label:'Debt / Equity', value:'0.67x', sub:'includes lease liabilities'} ],
+    note: 'One of only two US corporates that has historically carried a AAA rating alongside Microsoft. JNJ earns more in interest income than it pays in interest expense, which is why a standard coverage ratio doesn\'t apply cleanly — a stronger signal than any single ratio would show.',
+    source: 'Company filings, as reported Q1 2026',
+  },
+  BRK5Y: {
+    stats: [ {label:'Cash & Short-Term Treasuries', value:'$397.4B', sub:'Q1 2026, record high'}, {label:'Annualized Interest Income', value:'~$12B', sub:'on ~3.7% T-bill yields'} ],
+    note: 'The single largest corporate cash balance in the market — Berkshire\'s conglomerate structure makes a standard EBITDA-leverage metric less meaningful than the cash pile itself as a credit signal. Buffett has framed the buildup as caution on valuations, not distress.',
+    source: 'Berkshire Hathaway Q1 2026 10-Q; widely reported (Forbes, Investing.com, May 2026)',
+  },
+  WMT10Y: {
+    stats: [ {label:'Debt / EBITDA', value:'1.61x', sub:'Jan 2026'}, {label:'Interest Coverage', value:'12.3x', sub:'EBIT/Interest'} ],
+    note: 'Investment-grade retail leverage, consistent with Walmart\'s scale and stable cash generation — nothing here is inconsistent with the tight spread this bond trades at.',
+    source: 'GuruFocus trailing financials, as of Jan 2026',
+  },
+  XOM10Y: {
+    stats: [ {label:'Interest Coverage', value:'net income > interest', sub:'very low net debt'}, {label:'Net Debt / Equity', value:'11.4%', sub:'low leverage for the sector'} ],
+    note: 'One of the stronger balance sheets in the energy sector — very little net debt relative to its capital base, consistent with an AA-adjacent spread rather than the wider levels typical of more leveraged E&Ps.',
+    source: 'Company filings / financecharts.com, as reported 2026',
+  },
+  BAC5Y: {
+    stats: [ {label:'CET1 Ratio', value:'11.2%', sub:'Q1 2026, down 14bp QoQ'}, {label:'Prior Quarter CET1', value:'11.4%', sub:'Dec 2025'} ],
+    note: 'Solidly above regulatory minimums, but running a thinner CET1 buffer than JPMorgan\'s 14.3% — consistent with this bond trading at a somewhat wider spread despite sitting in the same A- rating tier.',
+    source: 'Bank of America Q1 2026 10-Q',
+  },
+  VZ10Y: {
+    stats: [ {label:'Net Debt / EBITDA', value:'2.5x', sub:'Q2 2026, up from 2.3x'} ],
+    note: 'Leverage rose after the Frontier Communications acquisition closed in January 2026; management targets deleveraging back to its goal range during 2027. An event-driven leverage bump like this is exactly what widens a BBB+ spread without a rating change — yet.',
+    source: 'Verizon Q2 2026 earnings release / investor materials',
+  },
+  F7Y: {
+    stats: [ {label:'Non-Captive Industrial Debt', value:'~$23.6B', sub:'ex-Ford Credit, Jun 2026'} ],
+    note: 'Ford Motor Credit is a captive auto-finance subsidiary — its leverage isn\'t comparable to an industrial Debt/EBITDA ratio any more than a bank\'s balance sheet is, since funding a loan book naturally requires more debt. The more relevant figure is Ford\'s non-captive industrial debt (~$23.6B), managed to an investment-grade leverage framework target even though this specific bond sits in BB+/crossover territory.',
+    source: 'Ford Motor Co Q2 2026 10-Q / investor materials',
+  },
+  OXY7Y: {
+    stats: [ {label:'Net Debt / EBITDA', value:'1.87x', sub:'FY2026'} ],
+    note: 'Moderate leverage for an E&P — Occidental\'s balance sheet has been de-risking since its acquisition-driven debt peak, consistent with a BB+/crossover profile rather than deep high yield.',
+    source: 'Company filings / financial data aggregators, as reported 2026',
+  },
+  CCL5Y: {
+    stats: [ {label:'Net Debt / EBITDA', value:'3.1x', sub:'Q2 2026, down from 3.4x FY2025'} ],
+    note: 'Genuinely high-yield leverage, though improving fast — Fitch has called Carnival\'s current metrics investment-grade-adjacent, and management targets sub-3.0x by year-end 2026. This is an active deleveraging story, not just a name that happens to trade wide.',
+    source: 'Carnival Corp Q2 2026 earnings release; Fitch commentary via company PR (Dec 2025)',
+  },
+};
+
+// Default portfolio weights (sum to 100%)
+const DEFAULT_WEIGHTS = { UST2Y:0.15, UST10Y:0.20, UST30Y:0.10, TBILL6M:0.10, JPM5Y:0.15, AAPL10Y:0.20, TSLA7Y:0.10 };
+let portfolioWeights = { ...DEFAULT_WEIGHTS };
+let portfolioValue = 1000000;
+const DAILY_YIELD_VOL = 0.0005; // 5bp assumed daily Treasury yield vol — stated assumption, not fitted
+
+/* =========================================================================
+   FORMAT HELPERS
+   ========================================================================= */
+const pct = (x, d=2) => (x*100).toFixed(d)+'%';
+const bp = (x, d=1) => (x*10000).toFixed(d)+'bp';
+const num = (x, d=2) => x.toFixed(d);
+const money = (x) => '$'+Math.round(x).toLocaleString('en-US');
+
+/** Consistent "what this means" panel — every tab gets one, content lifted from
+    RateLens_Technical_Glossary.md so the signal explanation lives next to the number. */
+function explainerBox(html){
+  return `<div class="explainer"><div class="explainer-label">What This Means</div>${html}</div>`;
+}
+
+/* =========================================================================
+   RENDER — TICKER
+   ========================================================================= */
+function renderTicker(){
+  const shape = curveShape({'3M':CURVE_YIELDS[0],'2Y':CURVE_YIELDS[3],'5Y':CURVE_YIELDS[4],'10Y':CURVE_YIELDS[5]});
+  let html = `<div class="ticker-item"><span class="ticker-sym">CURVE AS OF</span><span class="ticker-price">${CURVE_DATE}</span><span class="ticker-chg">Treasury.gov, live</span></div>`;
+  html += `<div class="ticker-item"><span class="ticker-sym">FED FUNDS</span><span class="ticker-price">${pct(FED_FUNDS)}</span><span class="ticker-chg">unch.</span></div>`;
+  CURVE_LABELS.forEach((l,i)=>{
+    html += `<div class="ticker-item"><span class="ticker-sym">${l}</span><span class="ticker-price">${pct(CURVE_YIELDS[i])}</span></div>`;
+  });
+  html += `<div class="ticker-item"><span class="ticker-sym">2s10s</span><span class="ticker-price up">${bp(shape.spread2s10s,0)}</span><span class="ticker-chg">un-inverted</span></div>`;
+  html += `<div class="ticker-item"><span class="ticker-sym">10Y TERM PREM.</span><span class="ticker-price up">&gt;0.80%</span><span class="ticker-chg">vs. 2011</span></div>`;
+  document.getElementById('tickerStrip').innerHTML = html;
+}
+
+/* =========================================================================
+   RENDER — CURVE SVG (shared by dashboard + curve page)
+   ========================================================================= */
+function curveSvg(showZero){
+  const w=440, h=230, padL=34, padR=14, padT=14, padB=26;
+  const minY = 3.0, maxY = 6.2; // %
+  const xFor = (i,n) => padL + (i/(n-1))*(w-padL-padR);
+  const yFor = (yieldPct) => padT + (1 - (yieldPct-minY)/(maxY-minY))*(h-padT-padB);
+
+  const parPts = CURVE_YIELDS.map((y,i)=>[xFor(i,CURVE_YIELDS.length), yFor(y*100)]);
+  const parLine = parPts.map(p=>p.join(',')).join(' ');
+
+  let zeroLine = '';
+  if(showZero){
+    const zeroPts = CURVE_LABELS.map((l,i)=>[xFor(i,CURVE_LABELS.length), yFor(zeroRateFn(CURVE_TENOR_YEARS[l])*100)]);
+    zeroLine = zeroPts.map(p=>p.join(',')).join(' ');
+  }
+
+  let gridlines = '';
+  [3,4,5,6].forEach(v=>{
+    const y = yFor(v);
+    gridlines += `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#DCD0BC" stroke-width="1" stroke-dasharray="${v===3?'0':'4 4'}"/>`;
+    gridlines += `<text x="6" y="${y+4}" fill="#6B6156" font-size="10">${v}%</text>`;
+  });
+  let xlabels = '';
+  CURVE_LABELS.forEach((l,i)=>{
+    const x = xFor(i, CURVE_LABELS.length);
+    xlabels += `<text x="${x-10}" y="${h-8}" fill="#6B6156" font-size="10">${l}</text>`;
+  });
+  let parDots = parPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.2" fill="#8F5A39"/>`).join('');
+  let zeroDots = showZero ? CURVE_LABELS.map((l,i)=>{
+    const x = xFor(i, CURVE_LABELS.length), y = yFor(zeroRateFn(CURVE_TENOR_YEARS[l])*100);
+    return `<circle cx="${x}" cy="${y}" r="3" fill="#4F9FC7"/>`;
+  }).join('') : '';
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridlines}
+    <polyline points="${parLine}" fill="none" stroke="#8F5A39" stroke-width="2.4"/>
+    ${showZero ? `<polyline points="${zeroLine}" fill="none" stroke="#4F9FC7" stroke-width="2" stroke-dasharray="5 3"/>` : ''}
+    ${parDots}${zeroDots}
+    ${xlabels}
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--muted);">
+    <span><span style="display:inline-block;width:10px;height:10px;background:#8F5A39;border-radius:2px;margin-right:5px;"></span>Par curve</span>
+    ${showZero ? '<span><span style="display:inline-block;width:10px;height:10px;background:#4F9FC7;border-radius:2px;margin-right:5px;"></span>Bootstrapped zero curve</span>' : ''}
+  </div>`;
+}
+
+/* =========================================================================
+   RENDER — DASHBOARD
+   ========================================================================= */
+function renderDashboard(){
+  const shape = curveShape({'3M':CURVE_YIELDS[0],'2Y':CURVE_YIELDS[3],'5Y':CURVE_YIELDS[4],'10Y':CURVE_YIELDS[5]});
+  let html = `
+    <div>
+      <div class="section-label">Today's US Treasury Curve</div>
+      <div class="split">
+        <div class="stat-card">${curveSvg(false)}</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="stat-card hero">
+            <div class="stat-label">10Y Yield</div>
+            <div class="stat-value">${pct(CURVE_YIELDS[5])}</div>
+            <div class="stat-sub">30Y: ${pct(CURVE_YIELDS[6])}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">2s10s Spread</div>
+            <div class="stat-value up">${bp(shape.spread2s10s,0)}</div>
+            <div class="stat-sub">positive — un-inverted since '22-'24</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">10Y Term Premium</div>
+            <div class="stat-value">&gt;0.80%</div>
+            <div class="stat-sub">highest since 2011</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Bond Watchlist</div>
+      <div class="watchlist-grid" id="watchlistGrid"></div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="section-label">Watchlist Alerts</div>
+        <div class="table-card">
+          <table>
+            <thead><tr><th>Rule</th><th class="num">Current</th><th>Status</th></tr></thead>
+            <tbody>
+              ${WATCHLIST_RULES.map(r=>{
+                const triggered = r.test();
+                const watching = !triggered && r.watch();
+                const status = triggered ? '<span style="color:var(--red);font-weight:600;">TRIGGERED</span>' : watching ? '<span style="color:var(--accent);font-weight:600;">WATCH</span>' : '<span style="color:var(--green);">CLEAR</span>';
+                return `<tr><td class="name-cell">${r.label}<br><span style="font-size:11px;color:var(--muted);">${r.note}</span></td><td class="num">${r.valueFn()}</td><td>${status}</td></tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Upcoming Treasury Auctions</div>
+        <div class="table-card">
+          <table>
+            <thead><tr><th>Date</th><th>Tenor</th><th class="num">Size</th></tr></thead>
+            <tbody>
+              ${AUCTION_CALENDAR.map(a=>`<tr><td class="name-cell">${a.date}</td><td class="name-cell">${a.tenor}</td><td class="num">${a.size}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="footnote" style="margin-top:6px;">Illustrative cadence, not a live pull — Treasury announces the actual forward calendar roughly a month ahead.</div>
+      </div>
+    </div>
+
+    <div class="footnote">Government curve pulled live from ${CURVE_SOURCE}, as of ${CURVE_DATE} (Treasury's own publication lag from today, not a bug here). Corporate bonds (JPM/AAPL/TSLA) are illustrative mock. YTM, duration, convexity, and DV01 are computed live from price via the RateLens bond-valuation calc layer either way.</div>
+
+    ${explainerBox(`The curve is the market pricing in its own expectations. A positive, upward-sloping curve like today's is the default healthy state — investors demand more to lock up money longer. When it <b>inverts</b> (long yields below short), that's preceded every US recession in the past 50 years, because it signals the market expects the Fed to cut in response to weakening growth. 2s10s is positive right now (${bp(shape.spread2s10s,0)}) — but check the Curve History section on the Yield Curve tab: it's been <b>flattening</b> all year, which is a more cautious signal than the current level alone suggests.`)}
+  `;
+  document.getElementById('page-dashboard').innerHTML = html;
+
+  let wl = '';
+  ALL_INSTRUMENTS.forEach(b=>{
+    const inPortfolio = portfolioWeights[b.id] !== undefined;
+    const priceDisp = b.price.toFixed(2);
+    const yieldDisp = pct(b.ytm !== undefined ? b.ytm : b.bey);
+    wl += `<div class="wl-card">
+      <div class="wl-top">
+        <div><div class="wl-ticker">${b.id}</div><div class="wl-name">${b.name}</div></div>
+        <div class="wl-price">${priceDisp}</div>
+      </div>
+      <div class="wl-metrics"><span class="rating-pill">${b.rating}</span><span>YTM <b>${yieldDisp}</b></span></div>
+      <button class="add-btn ${inPortfolio?'added':''}" onclick="togglePortfolio('${b.id}', this)">${inPortfolio? '✓ In Portfolio' : '+ Add to Portfolio'}</button>
+    </div>`;
+  });
+  document.getElementById('watchlistGrid').innerHTML = wl;
+}
+
+function togglePortfolio(id, btnEl){
+  if(portfolioWeights[id] !== undefined){
+    delete portfolioWeights[id];
+    btnEl.classList.remove('added');
+    btnEl.textContent = '+ Add to Portfolio';
+  } else {
+    portfolioWeights[id] = 0.10;
+    btnEl.classList.add('added');
+    btnEl.textContent = '✓ In Portfolio';
+  }
+}
+
+/* =========================================================================
+   RENDER — BOND VALUATION
+   ========================================================================= */
+function renderValuationPage(){
+  let options = ALL_INSTRUMENTS.map(b=>`<option value="${b.id}">${b.id} — ${b.name}</option>`).join('');
+  document.getElementById('page-valuation').innerHTML = `
+    <div class="field-row">
+      <label>Select instrument</label>
+      <select id="valSelect" onchange="renderValuationDetail(this.value)">${options}</select>
+    </div>
+    <div id="valuationDetail"></div>
+
+    ${explainerBox(`<b>Duration</b> is interest-rate risk measured in years — how much this bond's price moves for a 1% yield swing. <b>DV01</b> is the same idea in dollars per basis point, the number a desk actually watches day to day. <b>Convexity</b> corrects for the fact that price/yield isn't perfectly linear — more convexity means the bond gains more when yields fall than it loses when they rise, a feature, not a rounding error. <b>Z-spread</b> is what the market charges this bond over the risk-free curve for everything the curve doesn't price in: default risk, liquidity, structure.`)}
+  `;
+  renderValuationDetail(ALL_INSTRUMENTS[0].id);
+}
+
+function renderValuationDetail(id){
+  const b = ALL_INSTRUMENTS.find(x=>x.id===id);
+  const el = document.getElementById('valuationDetail');
+  if(b.type === 'Bill'){
+    el.innerHTML = `
+      <div class="grid4">
+        <div class="stat-card hero"><div class="stat-label">Price</div><div class="stat-value">${b.price.toFixed(3)}</div><div class="stat-sub">per 100 face</div></div>
+        <div class="stat-card"><div class="stat-label">Discount Yield</div><div class="stat-value">${pct(b.discountYield)}</div><div class="stat-sub">bank discount basis</div></div>
+        <div class="stat-card"><div class="stat-label">Bond-Equiv. Yield</div><div class="stat-value">${pct(b.bey)}</div><div class="stat-sub">use this to compare vs. notes/bonds</div></div>
+        <div class="stat-card"><div class="stat-label">Days to Maturity</div><div class="stat-value">${b.daysToMaturity}</div><div class="stat-sub">${b.daysToMaturity/365 < 0.5 ? 'money-market instrument' : ''}</div></div>
+      </div>
+      <div class="callout" style="margin-top:14px;"><b>Why BEY, not discount yield:</b> T-bills quote on a 360-day bank discount basis, which understates the true return. Converting to bond-equivalent yield (${pct(b.bey)} vs. ${pct(b.discountYield)} quoted) is what makes it comparable to a coupon note or bond on this platform.</div>
+      ${renderExecutionSection(b)}
+    `;
+    return;
+  }
+  const carry = carryRollDown(b.face, b.coupon, b.freq, b.years, b.price, 0.5, parCurveFn, b.nominalSpread);
+  el.innerHTML = `
+    <div class="grid4">
+      <div class="stat-card hero"><div class="stat-label">Clean Price</div><div class="stat-value">${b.price.toFixed(3)}</div><div class="stat-sub">Coupon ${pct(b.coupon)} · ${b.years}Y · ${b.rating}</div></div>
+      <div class="stat-card"><div class="stat-label">Yield to Maturity</div><div class="stat-value">${pct(b.ytm,3)}</div><div class="stat-sub">solved via Newton-Raphson</div></div>
+      <div class="stat-card"><div class="stat-label">Current Yield</div><div class="stat-value">${pct(b.currentYield,3)}</div><div class="stat-sub">coupon $ / price</div></div>
+      <div class="stat-card"><div class="stat-label">DV01</div><div class="stat-value">${b.dv01.toFixed(4)}</div><div class="stat-sub">$ per 100 face, per 1bp</div></div>
+    </div>
+    <div class="grid4" style="margin-top:14px;">
+      <div class="stat-card"><div class="stat-label">Macaulay Duration</div><div class="stat-value">${b.macD.toFixed(2)}</div><div class="stat-sub">years</div></div>
+      <div class="stat-card"><div class="stat-label">Modified Duration</div><div class="stat-value">${b.modD.toFixed(2)}</div><div class="stat-sub">% price / 1% yield move</div></div>
+      <div class="stat-card"><div class="stat-label">Convexity</div><div class="stat-value">${b.conv.toFixed(1)}</div><div class="stat-sub">2nd-order correction</div></div>
+      <div class="stat-card"><div class="stat-label">Nominal Spread</div><div class="stat-value">${bp(b.nominalSpread,0)}</div><div class="stat-sub">vs. matched-maturity govt</div></div>
+    </div>
+    <div class="callout" style="margin-top:14px;">
+      <b>Z-spread: ${bp(b.z,1)}.</b> The constant spread added to every point on the bootstrapped zero curve that reprices this bond exactly — more accurate than the nominal spread above because it uses the whole curve, not one point.
+      ${b.type==='Sovereign' ? ' Near-zero here is expected: this bond helps define the curve it\'s being measured against, plus a small residual from linear interpolation between sparse bootstrap tenors.' : ''}
+    </div>
+
+    <div style="margin-top:14px;">
+      <div class="section-label">Carry &amp; Roll-Down (6-Month Horizon)</div>
+      <div class="grid4">
+        <div class="stat-card"><div class="stat-label">Coupon Carry</div><div class="stat-value">${pct(carry.couponCarry,2)}</div><div class="stat-sub">income over 6M</div></div>
+        <div class="stat-card"><div class="stat-label">Roll Return</div><div class="stat-value ${carry.rollReturn>=0?'up':'down'}">${pct(carry.rollReturn,2)}</div><div class="stat-sub">price gain, static curve</div></div>
+        <div class="stat-card hero"><div class="stat-label">Total Carry + Roll</div><div class="stat-value">${pct(carry.totalCarryRoll,2)}</div><div class="stat-sub">over 6 months, annualize ×2</div></div>
+        <div class="stat-card"><div class="stat-label">Rolled-To Yield</div><div class="stat-value">${pct(carry.rolledYield,2)}</div><div class="stat-sub">curve at ${carry.newMaturity.toFixed(1)}Y today</div></div>
+      </div>
+      <div class="callout" style="margin-top:10px;"><b>What this earns you for doing nothing:</b> hold this bond 6 months and collect ${pct(carry.couponCarry,2)} of coupon income, plus a ${pct(carry.rollReturn,2)} price gain as it "rolls down" today's curve to a shorter maturity — assuming the curve itself doesn't move${b.type==='Corporate' ? ' and this bond\'s credit spread ('+bp(b.nominalSpread,0)+') stays constant while it rolls' : ''}. This is the return you're not taking a view on; everything else on this page is the return you are.</div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <div class="section-label">Cashflow Schedule</div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Period</th><th class="num">Years Out</th><th class="num">Coupon</th><th class="num">Principal</th><th class="num">Total</th></tr></thead>
+          <tbody>
+            ${cashFlows(b.face, b.coupon, b.freq, b.n).map((cf,i)=>{
+              const principal = (i===b.n-1) ? b.face : 0;
+              const coupon = cf - principal;
+              return `<tr><td class="name-cell">${i+1}</td><td class="num">${((i+1)/b.freq).toFixed(2)}</td><td class="num">${coupon.toFixed(3)}</td><td class="num">${principal.toFixed(2)}</td><td class="num">${cf.toFixed(3)}</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:6px;">Per 100 face value, semiannual periods. Portfolio-level aggregation is a natural next step once cashflow dates are wired to real calendars.</div>
+    </div>
+
+    ${renderExecutionSection(b)}
+    ${b.type === 'Corporate' ? renderCreditFundamentalsSection(b) : ''}
+  `;
+}
+
+/* =========================================================================
+   RENDER — EXECUTION / TCA (illustrative, no free public feed exists for this)
+   ========================================================================= */
+function renderExecutionSection(b){
+  const ex = EXECUTION_ESTIMATES[b.id];
+  if(!ex) return '';
+  const mid = b.price;
+  const dealerRows = DEALER_OFFSETS_BP.map((off,i)=>{
+    const bid = mid + (off - ex.bidAskBp/2)/100;
+    const ask = mid + (off + ex.bidAskBp/2)/100;
+    return `<tr><td class="name-cell">${DEALER_NAMES[i]}</td><td class="num">${bid.toFixed(3)}</td><td class="num">${ask.toFixed(3)}</td><td class="num">${((bid+ask)/2).toFixed(3)}</td></tr>`;
+  }).join('');
+  return `
+    <div style="margin-top:14px;">
+      <div class="section-label">Execution &amp; Liquidity (Illustrative)</div>
+      <div class="grid4">
+        <div class="stat-card"><div class="stat-label">Est. Bid-Ask</div><div class="stat-value">${ex.bidAskBp}bp</div><div class="stat-sub">round-trip, illustrative</div></div>
+        <div class="stat-card"><div class="stat-label">Est. Days to Liquidate</div><div class="stat-value">${ex.daysToLiquidate}</div><div class="stat-sub">typical institutional clip</div></div>
+        <div class="stat-card" style="grid-column: span 2;"><div class="stat-label">Liquidity Read</div><div class="stat-value" style="font-size:15px;">${ex.liquidity}</div></div>
+      </div>
+      <div class="table-card" style="margin-top:10px;">
+        <table>
+          <thead><tr><th>Dealer</th><th class="num">Bid</th><th class="num">Ask</th><th class="num">Mid</th></tr></thead>
+          <tbody>${dealerRows}</tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:6px;">No free public TCA/RFQ feed exists for this — bid-ask, days-to-liquidate, and the three dealer quotes are illustrative estimates, not a live pull. Fair value (the price shown above) is half the job on a real desk; whether you can actually trade it at that price is the other half, which is what this section stands in for.</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — CREDIT FUNDAMENTALS (real, sourced figures — corporates only)
+   ========================================================================= */
+function renderCreditFundamentalsSection(b){
+  const cf = CREDIT_FUNDAMENTALS[b.id];
+  if(!cf) return '';
+  const statsHtml = cf.stats.map((s,i) => `
+    <div class="stat-card ${i===0?'hero':''}"><div class="stat-label">${s.label}</div><div class="stat-value" style="font-size:${s.value.length>8?'16px':'21px'};">${s.value}</div><div class="stat-sub">${s.sub||''}</div></div>
+  `).join('');
+  return `
+    <div style="margin-top:14px;">
+      <div class="section-label">Credit Fundamentals</div>
+      <div class="grid4">${statsHtml}</div>
+      <div class="callout" style="margin-top:10px;"><b>Why this matters here:</b> ${cf.note}</div>
+      <div class="footnote" style="margin-top:6px;">Source: ${cf.source}. This is what separates "this spread looks wide" from "this spread is wide for a good reason" — the Z-spread above is a market price, this section is the fundamentals a real credit desk would check before trusting it.</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — CURVE HISTORY (Tier 2 — real 6-month snapshots, same live source)
+   ========================================================================= */
+function curveEvolutionSvg(){
+  const w=440, h=230, padL=34, padR=14, padT=14, padB=26;
+  const minY=3.0, maxY=5.2;
+  const xForIdx = (i,n) => padL + (i/(n-1))*(w-padL-padR);
+  const yFor = (yPct) => padT + (1 - (yPct-minY)/(maxY-minY))*(h-padT-padB);
+
+  const first = CURVE_HISTORY[0], last = CURVE_HISTORY[CURVE_HISTORY.length-1];
+  const lineFor = (snap) => snap.yields.map((y,i)=>[xForIdx(i,CURVE_LABELS.length), yFor(y*100)]).map(p=>p.join(',')).join(' ');
+
+  let gridlines = '';
+  [3,3.5,4,4.5,5].forEach(v=>{
+    const y = yFor(v);
+    gridlines += `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#DCD0BC" stroke-width="1" stroke-dasharray="4 4"/>`;
+    gridlines += `<text x="4" y="${y+4}" fill="#6B6156" font-size="10">${v}%</text>`;
+  });
+  let xlabels = '';
+  CURVE_LABELS.forEach((l,i)=>{
+    const x = xForIdx(i, CURVE_LABELS.length);
+    xlabels += `<text x="${x-10}" y="${h-8}" fill="#6B6156" font-size="10">${l}</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridlines}
+    <polyline points="${lineFor(first)}" fill="none" stroke="#9C9084" stroke-width="2" stroke-dasharray="5 3"/>
+    <polyline points="${lineFor(last)}" fill="none" stroke="#8F5A39" stroke-width="2.4"/>
+    ${xlabels}
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--muted);">
+    <span><span style="display:inline-block;width:10px;height:2px;background:#9C9084;margin-right:5px;"></span>${first.date}</span>
+    <span><span style="display:inline-block;width:10px;height:2px;background:#8F5A39;margin-right:5px;"></span>${last.date}</span>
+  </div>`;
+}
+
+function spreadTrendSvg(){
+  const w=440, h=180, padL=38, padR=14, padT=14, padB=26;
+  const spreads = CURVE_HISTORY.map(h => (h.yields[5]-h.yields[3])*10000); // 10Y - 2Y in bp
+  const minV = Math.min(...spreads)-10, maxV = Math.max(...spreads)+10;
+  const xForIdx = (i,n) => padL + (i/(n-1))*(w-padL-padR);
+  const yFor = (v) => padT + (1 - (v-minV)/(maxV-minV))*(h-padT-padB);
+
+  let gridlines = `<line x1="${padL}" y1="${yFor(0)}" x2="${w-padR}" y2="${yFor(0)}" stroke="#A32E22" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="${w-padR-60}" y="${yFor(0)-4}" fill="#A32E22" font-size="9">inversion line</text>`;
+  const pts = spreads.map((v,i)=>[xForIdx(i,spreads.length), yFor(v)]);
+  const line = pts.map(p=>p.join(',')).join(' ');
+  const dots = pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#8F5A39"/><text x="${p[0]-10}" y="${p[1]-8}" font-size="10" fill="#16140F">${spreads[i].toFixed(0)}bp</text>`).join('');
+  const xlabels = CURVE_HISTORY.map((hst,i)=>`<text x="${xForIdx(i,CURVE_HISTORY.length)-16}" y="${h-8}" fill="#6B6156" font-size="9">${hst.date.slice(5)}</text>`).join('');
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridlines}
+    <polyline points="${line}" fill="none" stroke="#4F9FC7" stroke-width="2"/>
+    ${dots}${xlabels}
+  </svg>`;
+}
+
+/* =========================================================================
+   RENDER — YIELD CURVE PAGE
+   ========================================================================= */
+function renderCurvePage(){
+  const shape = curveShape({'3M':CURVE_YIELDS[0],'2Y':CURVE_YIELDS[3],'5Y':CURVE_YIELDS[4],'10Y':CURVE_YIELDS[5]});
+  let rows = '';
+  CURVE_LABELS.forEach((l,i)=>{
+    const t = CURVE_TENOR_YEARS[l];
+    const par = CURVE_YIELDS[i];
+    const zero = zeroRateFn(t);
+    rows += `<tr><td class="name-cell">${l}</td><td class="num">${pct(par,3)}</td><td class="num">${pct(zero,3)}</td><td class="num">${bp(zero-par,1)}</td></tr>`;
+  });
+
+  const fwd1y1y = forwardRate(1,2,zeroRateFn);
+  const fwd2y3y = forwardRate(2,5,zeroRateFn);
+  const fwd5y5y = forwardRate(5,10,zeroRateFn);
+
+  document.getElementById('page-curve').innerHTML = `
+    <div class="split">
+      <div class="stat-card">${curveSvg(true)}</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="stat-card"><div class="stat-label">2s10s Spread</div><div class="stat-value up">${bp(shape.spread2s10s,0)}</div><div class="stat-sub">${shape.spread2s10s<0?'inverted':'normal'}</div></div>
+        <div class="stat-card"><div class="stat-label">3M10Y Spread</div><div class="stat-value up">${bp(shape.spread3m10y,0)}</div><div class="stat-sub">Fed's preferred recession signal</div></div>
+        <div class="stat-card"><div class="stat-label">2s5s10s Butterfly</div><div class="stat-value">${bp(shape.butterfly,0)}</div><div class="stat-sub">curvature, level/slope-independent</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Par → Spot (Bootstrapped Zero) Curve</div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Tenor</th><th class="num">Par Yield</th><th class="num">Zero Rate</th><th class="num">Zero − Par</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:8px;">Zero rates sit above par yields at the long end — the textbook-correct direction for an upward-sloping curve. 3M/6M treated as direct money-market zeros (single cash flow); 1Y-30Y bootstrapped from par assuming semiannual coupons at $100 face.</div>
+    </div>
+
+    <div>
+      <div class="section-label">Implied Forward Rates</div>
+      <div class="grid4">
+        <div class="stat-card"><div class="stat-label">1Y1Y Forward</div><div class="stat-value">${pct(fwd1y1y,2)}</div><div class="stat-sub">market's implied 1Y rate, 1Y from now</div></div>
+        <div class="stat-card"><div class="stat-label">2Y3Y Forward</div><div class="stat-value">${pct(fwd2y3y,2)}</div><div class="stat-sub">implied 3Y rate, 2Y from now</div></div>
+        <div class="stat-card"><div class="stat-label">5Y5Y Forward</div><div class="stat-value">${pct(fwd5y5y,2)}</div><div class="stat-sub">a common long-run rate expectations gauge</div></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>T-bill convention check:</b> a 6M bill quoted at ${pct(TBILL.discountYield)} discount yield is actually a ${pct(TBILL.bey)} bond-equivalent yield — the discount basis understates true return by roughly ${bp(TBILL.bey-TBILL.discountYield,0)}. Always convert before comparing bills to notes/bonds.
+    </div>
+
+    <div>
+      <div class="section-label">Curve History — H1 2026 (real, same live source)</div>
+      <div class="split">
+        <div class="stat-card">
+          <div class="stat-label" style="margin-bottom:10px;">Curve Shift: Jan 30 → Jun 30</div>
+          ${curveEvolutionSvg()}
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="margin-bottom:10px;">2s10s Spread Trend</div>
+          ${spreadTrendSvg()}
+        </div>
+      </div>
+      <div class="callout" style="margin-top:14px;">
+        <b>What actually happened, not a guess:</b> 2s10s compressed from ${bp((CURVE_HISTORY[0].yields[5]-CURVE_HISTORY[0].yields[3]),0)} in January to ${bp((CURVE_HISTORY[CURVE_HISTORY.length-1].yields[5]-CURVE_HISTORY[CURVE_HISTORY.length-1].yields[3]),0)} by June — a genuine bear-flattening move. The 2Y rose about ${bp(CURVE_HISTORY[CURVE_HISTORY.length-1].yields[3]-CURVE_HISTORY[0].yields[3],0)} over the period while the 10Y rose only about ${bp(CURVE_HISTORY[CURVE_HISTORY.length-1].yields[5]-CURVE_HISTORY[0].yields[5],0)} — the front end moving faster than the back end, consistent with the market pricing a "higher for longer" policy rate rather than the long end re-rating on fresh fiscal/term-premium concern. Worth updating this chart before leaning on it too hard — it only runs through the most recent Treasury.gov pull.
+      </div>
+    </div>
+
+    ${renderRealRatesSection()}
+    ${renderInternationalCurveSection()}
+
+    ${explainerBox(`<b>Par curve</b> is what's quoted. <b>Spot (zero) curve</b> strips out coupon effects to show the discount rate for a single cash flow at each maturity — it sits above the par curve when the curve is upward-sloping (as here), which is the correct textbook direction, not a bug. <b>Forward rates</b> aren't a prediction; they're what has to be true today, arbitrage-free, given the current curve. And the shape itself — 2s10s, 3m10y, butterfly — is a read on what the market expects from growth, Fed policy, and risk, not just a number to glance at. <b>Real rates</b> strip out inflation expectations entirely — the breakeven between the two is the market's own inflation forecast, not a survey. And <b>the curve isn't only a US story</b>: the international comparison below is why a JGB session half a world away can move a US Treasury desk's day.`)}
+  `;
+}
+
+/* =========================================================================
+   RENDER — REAL RATES & INFLATION BREAKEVENS (TIPS)
+   ========================================================================= */
+function realRatesCurveSvg(){
+  const w=440, h=230, padL=34, padR=14, padT=14, padB=26;
+  const minY=1.0, maxY=5.5;
+  const tenors = [5,10,30];
+  const xForIdx = (i,n) => padL + (i/(n-1))*(w-padL-padR);
+  const yFor = (v) => padT + (1 - (v-minY)/(maxY-minY))*(h-padT-padB);
+
+  const nomPts = tenors.map((t,i)=>[xForIdx(i,tenors.length), yFor(parCurveFn(t)*100)]);
+  const realPts = tenors.map((t,i)=>[xForIdx(i,tenors.length), yFor(realCurveFn(t)*100)]);
+  const nomLine = nomPts.map(p=>p.join(',')).join(' ');
+  const realLine = realPts.map(p=>p.join(',')).join(' ');
+
+  let gridlines = '';
+  [1,2,3,4,5].forEach(v=>{
+    const y = yFor(v);
+    gridlines += `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#DCD0BC" stroke-width="1" stroke-dasharray="4 4"/>`;
+    gridlines += `<text x="6" y="${y+4}" fill="#6B6156" font-size="10">${v}%</text>`;
+  });
+  let xlabels = '';
+  tenors.forEach((t,i)=>{
+    const x = xForIdx(i, tenors.length);
+    xlabels += `<text x="${x-10}" y="${h-8}" fill="#6B6156" font-size="10">${t}Y</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridlines}
+    <polyline points="${nomLine}" fill="none" stroke="#8F5A39" stroke-width="2.4"/>
+    <polyline points="${realLine}" fill="none" stroke="#4F9FC7" stroke-width="2.4"/>
+    ${nomPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.2" fill="#8F5A39"/>`).join('')}
+    ${realPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.2" fill="#4F9FC7"/>`).join('')}
+    ${xlabels}
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--muted);">
+    <span><span style="display:inline-block;width:10px;height:10px;background:#8F5A39;border-radius:2px;margin-right:5px;"></span>Nominal par curve</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#4F9FC7;border-radius:2px;margin-right:5px;"></span>Real (TIPS) curve</span>
+  </div>`;
+}
+
+function renderRealRatesSection(){
+  const rows = REAL_CURVE_POINTS.map(p=>{
+    const nominal = parCurveFn(p.years);
+    const breakeven = nominal - p.yield;
+    return `<tr><td class="name-cell">${p.label}</td><td class="num">${pct(nominal,2)}</td><td class="num">${pct(p.yield,2)}</td><td class="num" style="font-weight:600;">${pct(breakeven,2)}</td><td class="footnote" style="border:none;padding-left:16px;">${p.asOf}</td></tr>`;
+  }).join('');
+  const curveImplied10Y = parCurveFn(10) - realCurveFn(10);
+
+  const tipsCards = TIPS_BONDS.map(t=>`
+    <div class="stat-card">
+      <div class="stat-label">${t.id}</div>
+      <div class="stat-value" style="font-size:16px;">${t.realPrice.toFixed(3)} <span class="footnote" style="font-style:normal;">real price</span></div>
+      <div class="stat-sub">Real YTM ${pct(t.realYtm,3)} · Real Mod. Dur. ${t.realModD.toFixed(2)}y · Real DV01 ${t.realDV01.toFixed(4)}</div>
+      <div class="stat-sub">Index ratio ${t.indexRatio.toFixed(2)}x (illustrative) → adj. principal ${t.adjustedPrincipal.toFixed(2)} → nominal settlement ${t.nominalSettlement.toFixed(2)}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div>
+      <div class="section-label">Real Rates &amp; Inflation Breakevens (TIPS)</div>
+      <div class="split">
+        <div class="stat-card">${realRatesCurveSvg()}</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="stat-card hero"><div class="stat-label">10Y Breakeven (curve-implied)</div><div class="stat-value">${pct(curveImplied10Y,2)}</div><div class="stat-sub">nominal − real, both from this platform's curves</div></div>
+          <div class="stat-card"><div class="stat-label">10Y Breakeven (directly quoted)</div><div class="stat-value">${pct(QUOTED_10Y_BREAKEVEN.value,2)}</div><div class="stat-sub">${QUOTED_10Y_BREAKEVEN.source}, ${QUOTED_10Y_BREAKEVEN.asOf}</div></div>
+        </div>
+      </div>
+      <div class="table-card" style="margin-top:10px;">
+        <table>
+          <thead><tr><th>Tenor</th><th class="num">Nominal</th><th class="num">Real (TIPS)</th><th class="num">Breakeven</th><th>As Of</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="callout" style="margin-top:10px;"><b>Why the two 10Y breakevens don't match exactly:</b> the curve-implied number blends a June 2026 nominal curve with an April 2026 real curve — different vintages, because TIPS real yields moved through the year and the freshest read per tenor came from different dates. The directly-quoted FRED number uses same-day nominal and real prints. The gap between them (${bp(Math.abs(curveImplied10Y-QUOTED_10Y_BREAKEVEN.value),0)}) is a vintage-mismatch artifact, not a real market signal — worth knowing before trusting a derived number blindly.</div>
+      <div class="grid4" style="margin-top:10px;">${tipsCards}</div>
+      <div class="footnote" style="margin-top:6px;">TIPS priced on a real basis (real coupon, discounted at the real yield) — the standard TIPS quoting convention. Index ratio (cumulative CPI accretion since issuance) is illustrative; the real yield curve feeding the price is real, sourced Treasury.gov/FRED data. Real duration/DV01 here are genuinely real, not a nominal-equivalent conversion — deliberately not mixed into the Portfolio &amp; Risk tab's weighted duration, since blending real and nominal duration into one number would be silently wrong, not just a simplification.</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — INTERNATIONAL CURVE COMPARISON
+   ========================================================================= */
+function intlCurveSvg(){
+  const w=440, h=230, padL=34, padR=14, padT=14, padB=26;
+  const minY=0.5, maxY=6.0;
+  const tenors = [2,10,30];
+  const xForIdx = (i,n) => padL + (i/(n-1))*(w-padL-padR);
+  const yFor = (v) => padT + (1 - (v-minY)/(maxY-minY))*(h-padT-padB);
+  const colors = { US:'#8F5A39', JGB:'#A32E22', BUND:'#4F9FC7', GILT:'#15803D' };
+
+  let gridlines = '';
+  [1,2,3,4,5,6].forEach(v=>{
+    const y = yFor(v);
+    gridlines += `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#DCD0BC" stroke-width="1" stroke-dasharray="4 4"/>`;
+    gridlines += `<text x="6" y="${y+4}" fill="#6B6156" font-size="10">${v}%</text>`;
+  });
+  let xlabels = '';
+  tenors.forEach((t,i)=>{
+    xlabels += `<text x="${xForIdx(i,tenors.length)-10}" y="${h-8}" fill="#6B6156" font-size="10">${t}Y</text>`;
+  });
+
+  const usPts = tenors.map((t,i)=>[xForIdx(i,tenors.length), yFor(parCurveFn(t)*100)]);
+  let lines = `<polyline points="${usPts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${colors.US}" stroke-width="2.4"/>`;
+  lines += usPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${colors.US}"/>`).join('');
+  ['JGB','BUND','GILT'].forEach(key=>{
+    const pts = tenors.map((t,i)=>[xForIdx(i,tenors.length), yFor(intlYieldAt(key,t)*100)]);
+    lines += `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${colors[key]}" stroke-width="2" stroke-dasharray="5 3"/>`;
+    lines += pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${colors[key]}"/>`).join('');
+  });
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridlines}${lines}${xlabels}
+  </svg>
+  <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted);flex-wrap:wrap;">
+    <span><span style="display:inline-block;width:10px;height:10px;background:${colors.US};border-radius:2px;margin-right:5px;"></span>US Treasury</span>
+    <span><span style="display:inline-block;width:10px;height:2px;background:${colors.JGB};margin-right:5px;"></span>Japan (JGB)</span>
+    <span><span style="display:inline-block;width:10px;height:2px;background:${colors.BUND};margin-right:5px;"></span>Germany (Bund)</span>
+    <span><span style="display:inline-block;width:10px;height:2px;background:${colors.GILT};margin-right:5px;"></span>UK (Gilt)</span>
+  </div>`;
+}
+
+function renderInternationalCurveSection(){
+  const tenors = [2,10,30];
+  const rows = tenors.map(t=>{
+    const us = parCurveFn(t);
+    return `<tr><td class="name-cell">${t}Y</td><td class="num">${pct(us,2)}</td><td class="num">${pct(intlYieldAt('JGB',t),2)}</td><td class="num">${pct(intlYieldAt('BUND',t),2)}</td><td class="num">${pct(intlYieldAt('GILT',t),2)}</td></tr>`;
+  }).join('');
+  const spread10Y = (key) => (parCurveFn(10) - intlYieldAt(key,10))*10000;
+
+  return `
+    <div>
+      <div class="section-label">International Curve Comparison</div>
+      <div class="split">
+        <div class="stat-card">${intlCurveSvg()}</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="stat-card"><div class="stat-label">US − JGB, 10Y</div><div class="stat-value">${bp(spread10Y('JGB')/10000,0)}</div></div>
+          <div class="stat-card"><div class="stat-label">US − Bund, 10Y</div><div class="stat-value">${bp(spread10Y('BUND')/10000,0)}</div></div>
+          <div class="stat-card"><div class="stat-label">US − Gilt, 10Y</div><div class="stat-value">${bp(spread10Y('GILT')/10000,0)}</div></div>
+        </div>
+      </div>
+      <div class="table-card" style="margin-top:10px;">
+        <table>
+          <thead><tr><th>Tenor</th><th class="num">US</th><th class="num">Japan (JGB)</th><th class="num">Germany (Bund)</th><th class="num">UK (Gilt)</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="callout" style="margin-top:10px;"><b>Not academic:</b> the historical scenario replay on the Scenarios tab already shows the January 2026 JGB dislocation's US spillover — this is the direct-comparison view that spillover comes from. Rate differentials here also drive FX carry: a widening US-JGB gap is the same signal that makes USD/JPY carry trades more attractive, the exact intersection of rates and FX that motivated building this platform in the first place.</div>
+      <div class="footnote" style="margin-top:6px;">Only 2Y/10Y/30Y points per market — compared at matching tenors, not fully bootstrapped like the US curve. Points sourced at different dates per market (noted in the data); treat small level differences with that in mind, not as same-day moves.</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — PORTFOLIO & RISK
+   ========================================================================= */
+function computePortfolio(){
+  let totalWeight = 0, wYTM = 0, wDur = 0, wConv = 0, wDV01 = 0, wSpread = 0;
+  ALL_INSTRUMENTS.forEach(b=>{
+    const w = portfolioWeights[b.id] || 0;
+    totalWeight += w;
+    const y = b.ytm !== undefined ? b.ytm : b.bey;
+    wYTM += w * y;
+    wDur += w * b.modD;
+    wConv += w * (b.conv || 0);
+    wDV01 += w * b.dv01;
+    wSpread += w * (b.nominalSpread || 0);
+  });
+  const Z95 = 1.645;
+  const VaR = Z95 * wDur * DAILY_YIELD_VOL * portfolioValue;
+  return { totalWeight, wYTM, wDur, wConv, wDV01, wSpread, VaR };
+}
+
+/* =========================================================================
+   BENCHMARK — illustrative Bloomberg US Aggregate-style proxy, anchored to real, sourced index
+   characteristics (iShares AGG, which tracks the Bloomberg US Agg). Active metrics and tracking error
+   below are computed against this.
+   ========================================================================= */
+const BENCHMARK = {
+  name: 'Broad Market Aggregate (Bloomberg US Agg-style proxy)',
+  duration: 5.77, ytm: 0.0497, oas: 0.00265,
+  asOf: '2026-07-31', source: 'iShares Core U.S. Aggregate Bond ETF (AGG) fact sheet',
+};
+function benchmarkComparison(p){
+  const activeDuration = p.wDur - BENCHMARK.duration;
+  const activeYield = p.wYTM - BENCHMARK.ytm;
+  const activeSpread = p.wSpread - BENCHMARK.oas;
+  // Duration-based tracking error: same first-order approximation style as the platform's existing
+  // parametric VaR, applied to ACTIVE duration instead of total duration — annualized via sqrt(252).
+  const trackingError = Math.abs(activeDuration) * DAILY_YIELD_VOL * Math.sqrt(252);
+  return { activeDuration, activeYield, activeSpread, trackingError };
+}
+
+function renderPortfolioPage(){
+  const p = computePortfolio();
+  let rows = '';
+  ALL_INSTRUMENTS.forEach(b=>{
+    const w = portfolioWeights[b.id];
+    if(w === undefined) return;
+    const y = b.ytm !== undefined ? b.ytm : b.bey;
+    rows += `<tr>
+      <td class="name-cell">${b.id}<br><span style="font-size:11px;color:var(--muted);">${b.name}</span></td>
+      <td><span class="rating-pill">${b.rating}</span></td>
+      <td class="num"><input type="number" min="0" max="100" step="1" value="${(w*100).toFixed(0)}" onchange="updateWeight('${b.id}', this.value)"> %</td>
+      <td class="num">${pct(y,2)}</td>
+      <td class="num">${b.modD.toFixed(2)}</td>
+      <td class="num">${b.dv01.toFixed(4)}</td>
+      <td class="num">${(b.conv||0).toFixed(1)}</td>
+    </tr>`;
+  });
+  if(rows === '') rows = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">No positions yet — add bonds from the Dashboard watchlist.</td></tr>`;
+
+  const weightWarning = Math.abs(p.totalWeight - 1) > 0.005
+    ? `<span style="color:var(--red);">Weights sum to ${(p.totalWeight*100).toFixed(0)}% — adjust to 100%</span>`
+    : `<span style="color:var(--green);">Weights sum to 100%</span>`;
+
+  document.getElementById('page-portfolio').innerHTML = `
+    <div class="field-row">
+      <label>Portfolio value</label>
+      <input type="number" id="pvInput" value="${portfolioValue}" step="10000" onchange="updatePortfolioValue(this.value)">
+      <span class="footnote" style="font-style:normal;">${weightWarning}</span>
+    </div>
+
+    <div>
+      <div class="section-label">Risk Summary</div>
+      <div class="grid5">
+        <div class="stat-card hero"><div class="stat-label">Portfolio Value</div><div class="stat-value">${money(portfolioValue)}</div><div class="stat-sub">${Object.keys(portfolioWeights).length} positions</div></div>
+        <div class="stat-card"><div class="stat-label">Weighted YTM</div><div class="stat-value">${pct(p.wYTM,3)}</div><div class="stat-sub">weight-avg</div></div>
+        <div class="stat-card"><div class="stat-label">Effective Duration</div><div class="stat-value">${p.wDur.toFixed(2)}</div><div class="stat-sub">years, weight-avg</div></div>
+        <div class="stat-card"><div class="stat-label">Portfolio DV01</div><div class="stat-value">${p.wDV01.toFixed(4)}</div><div class="stat-sub">per 100 face, per 1bp</div></div>
+        <div class="stat-card"><div class="stat-label">95% 1-Day VaR</div><div class="stat-value" style="color:var(--red)">${money(p.VaR)}</div><div class="stat-sub">${pct(p.VaR/portfolioValue,2)} of NAV</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Holdings</div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Instrument</th><th>Rating</th><th class="num">Weight</th><th class="num">YTM</th><th class="num">Mod. Duration</th><th class="num">DV01</th><th class="num">Convexity</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout"><b>VaR methodology:</b> duration-based parametric VaR — <span class="mono">VaR = 1.645 × Portfolio Duration × Assumed Daily Yield Vol (${bp(DAILY_YIELD_VOL,0)}) × Portfolio Value</span>. This is the standard approach for a bond book without a full historical return series; it assumes a parallel yield move and normal returns — the same simplifications flagged in the EquityLens risk skill, just applied to duration instead of price-return volatility.</div>
+    <div class="footnote">DV01 and convexity are weight-averaged per 100 face, not scaled to absolute position size — consistent with the % based portfolio construction from the product definition doc.</div>
+
+    ${(() => {
+      // Computed once and shared below — key rate duration and factor exposures otherwise get
+      // independently recomputed by each section that needs them (KRD table, factor model, Monte
+      // Carlo all touch the same per-bond cashflow mapping).
+      const holdingsKRD = computeHoldingsKRD(KEY_RATE_NODES);
+      const factorExposures = portfolioFactorExposures(KEY_RATE_NODES, holdingsKRD);
+      return `
+        ${renderKeyRateDurationSection(holdingsKRD)}
+        ${renderBenchmarkSection(p)}
+        ${renderFactorRiskSection(factorExposures)}
+        ${renderMonteCarloSection(factorExposures, p)}
+      `;
+    })()}
+
+    ${explainerBox(`Weighted YTM and effective duration are the whole book's income and rate sensitivity, blended by position size — not any single holding. Duration cuts both ways: a higher-duration portfolio has more upside if you're right that rates are falling, and more downside if you're wrong. VaR here is duration-based and assumes a parallel, normally-distributed yield move — it's a plausible loss threshold at 95% confidence, not a hard ceiling. Real yield moves have fatter tails than this model assumes, so treat it as a floor on how bad things could get, not the worst case. <b>Key rate duration</b> is the other half of the absolute-risk picture: total duration tells you how exposed you are to rates moving together; key rate duration tells you exactly where on the curve that exposure sits. <b>Benchmark comparison</b> reframes everything above as relative — real mandates are graded on active bets, not absolute numbers. And the <b>factor model / Monte Carlo</b> sections below are two views of the same upgrade: a real risk model showing genuine diversification benefit instead of naively summed risk, and what that model implies once you simulate outcomes instead of solving for one number in closed form.`)}
+  `;
+}
+
+/* =========================================================================
+   RENDER — BENCHMARK COMPARISON
+   ========================================================================= */
+function renderBenchmarkSection(p){
+  const b = benchmarkComparison(p);
+  return `
+    <div>
+      <div class="section-label">Benchmark Comparison</div>
+      <div class="callout" style="margin-bottom:10px;"><b>${BENCHMARK.name}</b> — Duration ${BENCHMARK.duration.toFixed(2)}y, YTM ${pct(BENCHMARK.ytm,2)}, OAS ${bp(BENCHMARK.oas,0)}. Source: ${BENCHMARK.source}, as of ${BENCHMARK.asOf}.</div>
+      <div class="grid4">
+        <div class="stat-card"><div class="stat-label">Active Duration</div><div class="stat-value ${b.activeDuration>=0?'up':'down'}">${b.activeDuration>=0?'+':''}${b.activeDuration.toFixed(2)}y</div><div class="stat-sub">${b.activeDuration>=0?'longer than benchmark':'shorter than benchmark'}</div></div>
+        <div class="stat-card"><div class="stat-label">Active Yield</div><div class="stat-value ${b.activeYield>=0?'up':'down'}">${b.activeYield>=0?'+':''}${bp(b.activeYield,0)}</div></div>
+        <div class="stat-card"><div class="stat-label">Active Spread</div><div class="stat-value ${b.activeSpread>=0?'up':'down'}">${b.activeSpread>=0?'+':''}${bp(b.activeSpread,0)}</div></div>
+        <div class="stat-card hero"><div class="stat-label">Tracking Error (ann.)</div><div class="stat-value">${bp(b.trackingError,0)}</div><div class="stat-sub">duration-based estimate</div></div>
+      </div>
+      <div class="footnote" style="margin-top:6px;">Real mandates are graded on these active numbers, not the absolute ones above — this is the reframe everything else on this page is implicitly building toward. Tracking error here is a first-order, duration-based approximation (same style as the platform's parametric VaR) — a real TE number would also account for sector/security selection and the full covariance structure, not just the active duration bet.</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — FACTOR RISK DECOMPOSITION
+   ========================================================================= */
+function renderFactorRiskSection(exposures){
+  const holdings = ALL_INSTRUMENTS.filter(b => portfolioWeights[b.id] !== undefined);
+  if(holdings.length === 0){
+    return `<div><div class="section-label">Factor Risk Decomposition</div><div class="footnote">Add positions from the Dashboard watchlist to see the factor breakdown.</div></div>`;
+  }
+  const risk = factorPortfolioRisk(exposures);
+  const factorRows = FACTOR_NAMES.map(f=>{
+    const contrib = Math.abs(exposures[f]) * FACTOR_VOL_BP[f]/10000;
+    return `<tr><td class="name-cell" style="text-transform:capitalize;">${f}</td><td class="num">${exposures[f].toFixed(3)}</td><td class="num">${FACTOR_VOL_BP[f]}bp</td><td class="num">${money(contrib*portfolioValue)}</td></tr>`;
+  }).join('');
+
+  return `
+    <div>
+      <div class="section-label">Factor Risk Decomposition</div>
+      <div class="grid4">
+        <div class="stat-card"><div class="stat-label">Naive Sum (perfect correlation)</div><div class="stat-value">${money(risk.naiveSum*portfolioValue)}</div><div class="stat-sub">1-day std dev, if factors moved in lockstep</div></div>
+        <div class="stat-card hero"><div class="stat-label">Diversified Factor Risk</div><div class="stat-value">${money(risk.diversifiedStd*portfolioValue)}</div><div class="stat-sub">1-day std dev, w'Σw</div></div>
+        <div class="stat-card"><div class="stat-label">Diversification Benefit</div><div class="stat-value up">${pct(risk.diversificationBenefit,0)}</div><div class="stat-sub">how much correlation <1 saves you</div></div>
+        <div class="stat-card"><div class="stat-label">Factors</div><div class="stat-value" style="font-size:14px;">Level · Slope · Curve · Spread</div></div>
+      </div>
+      <div class="table-card" style="margin-top:10px;">
+        <table>
+          <thead><tr><th>Factor</th><th class="num">Portfolio Exposure</th><th class="num">Daily Vol</th><th class="num">Standalone $ Risk</th></tr></thead>
+          <tbody>${factorRows}</tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:6px;">Level/Slope/Curvature are constructed to be approximately orthogonal (real PCA-derived curve factors are built this way, not assumed) — Spread carries an illustrative -0.2 correlation to Level (flight-to-quality). This is what "sum of individual bond risks" misses: a portfolio can hold the exact same total DV01 as another and carry meaningfully different risk depending on how those factor exposures net out.</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — MONTE CARLO / FAT-TAILED VaR
+   ========================================================================= */
+let mcSeed = 42;
+function mcHistogramSvg(pnls, portfolioVal){
+  const w=440, h=180, padL=14, padR=14, padT=10, padB=26;
+  const nBins = 24;
+  const min = pnls[0], max = pnls[pnls.length-1];
+  const range = (max-min) || 1;
+  const bins = new Array(nBins).fill(0);
+  pnls.forEach(v=>{
+    let idx = Math.floor(((v-min)/range)*nBins);
+    if(idx>=nBins) idx = nBins-1; if(idx<0) idx=0;
+    bins[idx]++;
+  });
+  const maxCount = Math.max(...bins,1);
+  const binW = (w-padL-padR)/nBins;
+  const var95Idx = Math.floor(nBins*0.05);
+  let bars = '';
+  bins.forEach((c,i)=>{
+    const barH = (c/maxCount)*(h-padT-padB);
+    const x = padL + i*binW;
+    const y = h-padB-barH;
+    const color = i <= var95Idx ? '#A32E22' : '#8F5A39';
+    bars += `<rect x="${x}" y="${y}" width="${Math.max(1,binW-1)}" height="${barH}" fill="${color}" opacity="0.85"/>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${bars}
+    <line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#DCD0BC" stroke-width="1"/>
+    <text x="${padL}" y="${h-8}" fill="#6B6156" font-size="10">${money(min)}</text>
+    <text x="${w-padR-50}" y="${h-8}" fill="#6B6156" font-size="10">${money(max)}</text>
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--muted);">
+    <span><span style="display:inline-block;width:10px;height:10px;background:#A32E22;border-radius:2px;margin-right:5px;"></span>Worst 5% of simulated outcomes</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#8F5A39;border-radius:2px;margin-right:5px;"></span>Rest of the distribution</span>
+  </div>`;
+}
+function renderMonteCarloSection(exposures, p){
+  const holdings = ALL_INSTRUMENTS.filter(b => portfolioWeights[b.id] !== undefined);
+  if(holdings.length === 0){
+    return `<div><div class="section-label">Monte Carlo / Fat-Tailed VaR</div><div class="footnote">Add positions from the Dashboard watchlist to run the simulation.</div></div>`;
+  }
+  const nPaths = 5000;
+  const normalResult = runMonteCarloVar(exposures, nPaths, mcSeed, false);
+  const fatResult = runMonteCarloVar(exposures, nPaths, mcSeed, true);
+  const parametricVaR = p.VaR;
+
+  return `
+    <div>
+      <div class="section-label">Monte Carlo / Fat-Tailed VaR — ${nPaths.toLocaleString()} Simulated Paths</div>
+      <div class="grid4">
+        <div class="stat-card"><div class="stat-label">Parametric VaR (95%)</div><div class="stat-value">${money(parametricVaR)}</div><div class="stat-sub">existing closed-form estimate, above</div></div>
+        <div class="stat-card"><div class="stat-label">Monte Carlo VaR (95%, normal)</div><div class="stat-value">${money(normalResult.var95)}</div><div class="stat-sub">simulated, factor-correlated</div></div>
+        <div class="stat-card hero"><div class="stat-label">Monte Carlo VaR (95%, fat-tailed)</div><div class="stat-value" style="color:var(--red)">${money(fatResult.var95)}</div><div class="stat-sub">~5% chance of a 3-5x amplified shock</div></div>
+        <div class="stat-card"><div class="stat-label">CVaR / Expected Shortfall (95%, fat-tailed)</div><div class="stat-value" style="color:var(--red)">${money(fatResult.cvar95)}</div><div class="stat-sub">avg. loss in the worst 5% of paths</div></div>
+      </div>
+      <div class="split" style="margin-top:10px;">
+        <div class="stat-card">${mcHistogramSvg(normalResult.pnls, portfolioValue)}<div class="footnote" style="margin-top:4px;">Normal-shock simulation</div></div>
+        <div class="stat-card">${mcHistogramSvg(fatResult.pnls, portfolioValue)}<div class="footnote" style="margin-top:4px;">Fat-tailed simulation</div></div>
+      </div>
+      <div class="field-row" style="margin-top:10px;">
+        <button class="ghost-btn" onclick="mcSeed = Date.now() % 100000; renderPortfolioPage();">Re-run Simulation (new random seed)</button>
+      </div>
+      <div class="footnote" style="margin-top:6px;">Seeded so results are reproducible on reload — click above for a fresh draw. Both simulations draw from the same factor covariance matrix as the section above (Cholesky decomposition of the correlation matrix, correlated normal shocks); the fat-tailed version mixes in an occasional amplified shock, a simple scale-mixture approach rather than a full Student-t sampler. The gap between the 95% and fat-tailed numbers is the concrete answer to "how much does the fat-tails assumption actually matter" — not just a caveat in a footnote anymore.</div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — KEY RATE DURATION (Portfolio & Risk tab)
+   ========================================================================= */
+function krdBarChart(portfolioKrd, maxAbs){
+  const w=440, h=200, padL=34, padR=14, padT=14, padB=30;
+  const n = KEY_RATE_NODES.length;
+  const barW = (w-padL-padR)/n * 0.6;
+  const xForIdx = (i) => padL + (i+0.5)*((w-padL-padR)/n);
+  const zeroY = padT + (h-padT-padB)/2;
+  const scale = (h-padT-padB)/2 / (maxAbs || 1);
+
+  let bars = '', labels = '';
+  portfolioKrd.forEach((v,i)=>{
+    const x = xForIdx(i);
+    const barH = Math.abs(v)*scale;
+    const y = v >= 0 ? zeroY - barH : zeroY;
+    bars += `<rect x="${x-barW/2}" y="${y}" width="${barW}" height="${Math.max(1,barH)}" fill="${v>=0?'#8F5A39':'#A32E22'}" rx="2"/>`;
+    labels += `<text x="${x}" y="${h-10}" fill="#6B6156" font-size="10" text-anchor="middle">${CURVE_LABELS[i]}</text>`;
+    labels += `<text x="${x}" y="${v>=0 ? y-4 : y+barH+12}" fill="#16140F" font-size="10" text-anchor="middle">${v.toFixed(2)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${padL}" y1="${zeroY}" x2="${w-padR}" y2="${zeroY}" stroke="#DCD0BC" stroke-width="1"/>
+    ${bars}${labels}
+  </svg>`;
+}
+
+function renderKeyRateDurationSection(holdingsKRD){
+  const holdings = ALL_INSTRUMENTS.filter(b => portfolioWeights[b.id] !== undefined);
+  if(holdings.length === 0){
+    return `<div><div class="section-label">Key Rate Duration</div><div class="footnote">Add positions from the Dashboard watchlist to see where the portfolio's rate risk sits on the curve.</div></div>`;
+  }
+  const portfolioKrd = new Array(KEY_RATE_NODES.length).fill(0);
+  let perBondRows = '';
+  holdings.forEach(b=>{
+    const w = portfolioWeights[b.id];
+    const krd = holdingsKRD[b.id];
+    krd.forEach((v,i)=> portfolioKrd[i] += w*v);
+    perBondRows += `<tr><td class="name-cell">${b.id}</td>${krd.map(v=>`<td class="num">${v.toFixed(2)}</td>`).join('')}<td class="num" style="font-weight:600;">${b.modD.toFixed(2)}</td></tr>`;
+  });
+  const absKrd = portfolioKrd.map(Math.abs);
+  const maxAbs = Math.max(...absKrd, 0.01);
+  const maxIdx = absKrd.indexOf(maxAbs);
+  const sumCheck = portfolioKrd.reduce((a,b)=>a+b,0);
+
+  return `
+    <div>
+      <div class="section-label">Key Rate Duration — Where Portfolio Rate Risk Actually Sits</div>
+      <div class="split">
+        <div class="stat-card">${krdBarChart(portfolioKrd, maxAbs)}</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="stat-card hero"><div class="stat-label">Sum of Key Rate Durations</div><div class="stat-value">${sumCheck.toFixed(2)}</div><div class="stat-sub">reconciles to Effective Duration above</div></div>
+          <div class="stat-card"><div class="stat-label">Largest Single Exposure</div><div class="stat-value">${CURVE_LABELS[maxIdx]}</div><div class="stat-sub">where a curve twist would hurt (or help) most</div></div>
+        </div>
+      </div>
+      <div class="table-card" style="margin-top:10px;">
+        <table>
+          <thead><tr><th>Instrument</th>${CURVE_LABELS.map(l=>`<th class="num">${l}</th>`).join('')}<th class="num">Total</th></tr></thead>
+          <tbody>${perBondRows}</tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:6px;">Per-node modified-duration contribution (years), via cashflow mapping — not a full curve Jacobian, but standard practitioner shorthand. This catches "shaping risk" a single duration number misses entirely: a portfolio can be duration-neutral overall while carrying a large, offsetting bet on the belly vs. the wings of the curve.</div>
+    </div>
+  `;
+}
+
+function updateWeight(id, val){
+  portfolioWeights[id] = Math.max(0, parseFloat(val)||0) / 100;
+  renderPortfolioPage();
+}
+function updatePortfolioValue(val){
+  portfolioValue = Math.max(0, parseFloat(val)||0);
+  renderPortfolioPage();
+}
+
+/* =========================================================================
+   RENDER — SCENARIOS
+   ========================================================================= */
+const SCENARIOS = {
+  bear: { label:'Bear', delta: 0.0056, spreadDelta: 0.0015, note:'deficits widen, term premium re-rates higher, Fed holds; risk appetite softens, corporate spreads widen ~15bp' },
+  base: { label:'Base', delta: 0.0000, spreadDelta: 0.0000, note:'today\'s anchors roughly hold' },
+  bull: { label:'Bull', delta: -0.0064, spreadDelta: -0.0010, note:'deficit consolidation, Fed cuts, term premium compresses; risk appetite firms, corporate spreads tighten ~10bp' },
+};
+
+function scenarioImpact(deltaY){
+  let impact = 0;
+  ALL_INSTRUMENTS.forEach(b=>{
+    const w = portfolioWeights[b.id] || 0;
+    impact += w * priceImpactFromYieldShock(b.modD, b.conv || 0, deltaY);
+  });
+  return impact;
+}
+
+function renderScenariosPage(){
+  let scenarioButtons = '';
+  Object.entries(SCENARIOS).forEach(([key,s])=>{
+    const impact = scenarioImpact(s.delta);
+    const color = impact > 0.0005 ? 'up' : impact < -0.0005 ? 'down' : '';
+    scenarioButtons += `<div class="scenario-btn" onclick="applyScenario('${key}')">
+      <div class="label">${s.label} (${s.delta===0?'0bp':(s.delta>0?'+':'')+bp(s.delta,0)})</div>
+      <div class="val ${color}">${(impact*100).toFixed(2)}%</div>
+    </div>`;
+  });
+
+  document.getElementById('page-scenarios').innerHTML = `
+    <div>
+      <div class="section-label">Bull / Base / Bear — Portfolio Price Impact</div>
+      <div class="scenario-row">${scenarioButtons}</div>
+      <div class="footnote" style="margin-top:8px;">Applied as a parallel shift to every position's yield, translated to price via duration + convexity. Click a scenario for the per-bond breakdown below.</div>
+    </div>
+
+    <div>
+      <div class="section-label">Custom Curve Shock</div>
+      <div class="field-row">
+        <label>Parallel shift (bp)</label>
+        <input type="number" id="shockInput" value="0" step="5" style="width:80px;">
+        <label>Corporate spread shift (bp)</label>
+        <input type="number" id="spreadShockInput" value="0" step="5" style="width:80px;">
+        <button class="ghost-btn" onclick="applyCustomShock()">Apply Shock</button>
+      </div>
+    </div>
+
+    <div id="scenarioDetail"></div>
+
+    <div class="callout"><b>Framing, not forecasting:</b> the deficit is 5.8% of GDP in 2026, rising toward 6.7% by 2036 on CBO projections — that shows up here as a rising term premium (already &gt;0.80% on the 10Y). Bear/base/bull aren't predictions; they're the yield decomposition (expected short rate + term premium) stress-tested under different assumptions about that trajectory.</div>
+
+    <div>
+      <div class="section-label">Historical Scenario Replay</div>
+      <div class="scenario-row">
+        ${Object.entries(HISTORICAL_SCENARIOS).map(([key,s])=>`
+          <div class="scenario-btn" onclick="applyHistoricalScenario('${key}')">
+            <div class="label">${s.label}</div>
+            <div class="val" style="font-size:12px;font-weight:500;">${s.period}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="footnote" style="margin-top:8px;">Real, sourced curve moves re-shaped as key-rate node deltas instead of a single parallel number — the same key-rate duration engine from the Portfolio &amp; Risk tab does the pricing here. Click one for the shape and the per-bond breakdown.</div>
+      <div id="historicalDetail" style="margin-top:12px;"></div>
+    </div>
+
+    ${explainerBox(`Bull/base/bear aren't predictions — they're the yield decomposition (expected short rate + term premium) stress-tested under different assumptions about the deficit trajectory and Fed policy. A <b>parallel shock</b> moves every maturity the same amount; a real curve move is rarely that clean, which is what the Historical Scenario Replay below is for. Watch convexity on the long end: it's why a -50bp shock doesn't just mirror the loss from a +50bp one — the gain is bigger, which is the positive-convexity effect explained on the Bond Valuation tab. <b>Return attribution</b> splits that same price move into what you earned for waiting (carry), what the rate move cost or made you (curve), and what a credit re-rating cost or made you (spread) — three different reasons to own or avoid a bond, collapsed into one number if you only look at total return.`)}
+  `;
+  applyScenario('base');
+  applyHistoricalScenario('hiking2022');
+}
+
+function applyScenario(key){
+  const s = SCENARIOS[key];
+  renderScenarioDetail(s.delta, s.spreadDelta, `${s.label} scenario: ${s.note}`);
+}
+function applyCustomShock(){
+  const bpVal = parseFloat(document.getElementById('shockInput').value) || 0;
+  const spreadBpVal = parseFloat(document.getElementById('spreadShockInput').value) || 0;
+  renderScenarioDetail(bpVal/10000, spreadBpVal/10000, `Custom shock: ${bpVal>=0?'+':''}${bpVal}bp curve, ${spreadBpVal>=0?'+':''}${spreadBpVal}bp corporate spread`);
+}
+function renderScenarioDetail(deltaY, spreadDeltaY, label){
+  let rows = '';
+  let attrRows = '';
+  ALL_INSTRUMENTS.forEach(b=>{
+    const w = portfolioWeights[b.id];
+    if(w === undefined) return;
+    const effectiveSpreadShock = b.type === 'Corporate' ? spreadDeltaY : 0;
+    const impactPct = priceImpactFromYieldShock(b.modD, b.conv || 0, deltaY) + priceImpactFromYieldShock(b.modD, 0, effectiveSpreadShock);
+    const newPrice = b.price * (1 + impactPct);
+    rows += `<tr>
+      <td class="name-cell">${b.id}</td>
+      <td class="num">${b.price.toFixed(2)}</td>
+      <td class="num">${newPrice.toFixed(2)}</td>
+      <td class="num ${impactPct>=0?'up':'down'}">${(impactPct*100).toFixed(2)}%</td>
+    </tr>`;
+
+    if(b.type !== 'Bill'){
+      const attr = returnAttribution(b, 0.25, deltaY, effectiveSpreadShock);
+      attrRows += `<tr>
+        <td class="name-cell">${b.id}</td>
+        <td class="num">${(attr.carry*100).toFixed(2)}%</td>
+        <td class="num ${attr.curveEffect>=0?'up':'down'}">${(attr.curveEffect*100).toFixed(2)}%</td>
+        <td class="num ${attr.spreadEffect>=0?'up':'down'}">${(attr.spreadEffect*100).toFixed(2)}%</td>
+        <td class="num ${attr.total>=0?'up':'down'}">${(attr.total*100).toFixed(2)}%</td>
+      </tr>`;
+    }
+  });
+  if(rows==='') rows = `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">No positions in portfolio.</td></tr>`;
+  if(attrRows==='') attrRows = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No positions in portfolio.</td></tr>`;
+  const totalImpact = scenarioImpact(deltaY) + ALL_INSTRUMENTS.reduce((sum,b)=>{
+    const w = portfolioWeights[b.id] || 0;
+    const eff = b.type==='Corporate' ? spreadDeltaY : 0;
+    return sum + w * priceImpactFromYieldShock(b.modD, 0, eff);
+  }, 0);
+  document.getElementById('scenarioDetail').innerHTML = `
+    <div class="section-label">${label}</div>
+    <div class="grid4" style="margin-bottom:14px;">
+      <div class="stat-card hero"><div class="stat-label">Portfolio Price Impact</div><div class="stat-value ${totalImpact>=0?'up':'down'}">${(totalImpact*100).toFixed(2)}%</div><div class="stat-sub">${money(totalImpact*portfolioValue)}</div></div>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Instrument</th><th class="num">Price Before</th><th class="num">Price After</th><th class="num">% Impact</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+
+    <div class="section-label" style="margin-top:18px;">Return Attribution — 3-Month Horizon</div>
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Instrument</th><th class="num">Carry + Roll</th><th class="num">Curve Effect</th><th class="num">Spread Effect</th><th class="num">Total</th></tr></thead>
+        <tbody>${attrRows}</tbody>
+      </table>
+    </div>
+    <div class="footnote" style="margin-top:6px;">Carry + Roll assumes the curve stays static (from the Bond Valuation tab's methodology). Curve Effect and Spread Effect are the incremental price impact from this specific scenario's rate shock and corporate-spread shock, via duration + convexity. The three should roughly explain the total — that reconciliation is the point of attribution, not just the total return number.</div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — HISTORICAL SCENARIO REPLAY (real curve shapes via KRD engine)
+   ========================================================================= */
+function applyHistoricalScenario(key){
+  const s = HISTORICAL_SCENARIOS[key];
+  let deltaRows = '';
+  KEY_RATE_NODES.forEach((n,i)=>{
+    deltaRows += `<tr><td class="name-cell">${CURVE_LABELS[i]}</td><td class="num">${s.deltasBp[i]>=0?'+':''}${s.deltasBp[i]}bp</td></tr>`;
+  });
+
+  let bondRows = '';
+  let totalImpact = 0;
+  ALL_INSTRUMENTS.forEach(b=>{
+    const w = portfolioWeights[b.id];
+    const krd = krdForInstrument(b, KEY_RATE_NODES);
+    let impact = 0;
+    krd.forEach((k,i)=> impact += -k * (s.deltasBp[i]/10000));
+    if(w !== undefined) totalImpact += w * impact;
+    if(w === undefined) return;
+    const newPrice = b.price * (1 + impact);
+    bondRows += `<tr>
+      <td class="name-cell">${b.id}</td>
+      <td class="num">${b.price.toFixed(2)}</td>
+      <td class="num">${newPrice.toFixed(2)}</td>
+      <td class="num ${impact>=0?'up':'down'}">${(impact*100).toFixed(2)}%</td>
+    </tr>`;
+  });
+  if(bondRows==='') bondRows = `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">No positions in portfolio.</td></tr>`;
+
+  document.getElementById('historicalDetail').innerHTML = `
+    <div class="split">
+      <div>
+        <div class="stat-card hero"><div class="stat-label">Portfolio Price Impact — ${s.label}</div><div class="stat-value ${totalImpact>=0?'up':'down'}">${(totalImpact*100).toFixed(2)}%</div><div class="stat-sub">${money(totalImpact*portfolioValue)}</div></div>
+        <div class="table-card" style="margin-top:10px;">
+          <table>
+            <thead><tr><th>Instrument</th><th class="num">Price Before</th><th class="num">Price After</th><th class="num">% Impact</th></tr></thead>
+            <tbody>${bondRows}</tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="table-card">
+          <table>
+            <thead><tr><th>Tenor</th><th class="num">Delta Applied</th></tr></thead>
+            <tbody>${deltaRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:12px;"><b>${s.period}:</b> ${s.note}</div>
+    <div class="footnote" style="margin-top:6px;">Source: ${s.source}. Priced via each instrument's key-rate duration (Portfolio &amp; Risk tab) applied to the tenor-by-tenor deltas at left — a real curve *shape*, not a single parallel number.</div>
+  `;
+}
+
+/* =========================================================================
+   RENDER — COMPARISON / RELATIVE VALUE
+   ========================================================================= */
+let comparisonSelected = { JPM5Y:true, AAPL10Y:true, TSLA7Y:true };
+
+function toggleComparison(id){
+  comparisonSelected[id] = !comparisonSelected[id];
+  renderComparisonPage();
+}
+
+/** Bond dots plotted against the par curve at their actual maturity (interpolated x position). */
+function comparisonCurveSvg(selectedIds){
+  const w=440, h=230, padL=34, padR=14, padT=14, padB=26;
+  const minY=3.0, maxY=9.5; // wide enough to fit the full universe, from govies to a single-B credit
+  const anchors = CURVE_TENOR_ARR;
+  const xForIdx = (i,n) => padL + (i/(n-1))*(w-padL-padR);
+  const yFor = (yPct) => padT + (1 - (yPct-minY)/(maxY-minY))*(h-padT-padB);
+  function xForYears(years){
+    const n = anchors.length;
+    if(years <= anchors[0]) return padL;
+    if(years >= anchors[n-1]) return w-padR;
+    for(let i=0;i<n-1;i++){
+      if(years >= anchors[i] && years <= anchors[i+1]){
+        const x0 = xForIdx(i,n), x1 = xForIdx(i+1,n);
+        const frac = (years-anchors[i])/(anchors[i+1]-anchors[i]);
+        return x0 + frac*(x1-x0);
+      }
+    }
+    return w-padR;
+  }
+
+  const parPts = CURVE_YIELDS.map((y,i)=>[xForIdx(i,CURVE_YIELDS.length), yFor(y*100)]);
+  const parLine = parPts.map(p=>p.join(',')).join(' ');
+
+  let gridlines = '';
+  [3,4,5,6,7,8,9].forEach(v=>{
+    const y = yFor(v);
+    gridlines += `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#DCD0BC" stroke-width="1" stroke-dasharray="4 4"/>`;
+    gridlines += `<text x="6" y="${y+4}" fill="#6B6156" font-size="10">${v}%</text>`;
+  });
+  let xlabels = '';
+  CURVE_LABELS.forEach((l,i)=>{
+    const x = xForIdx(i, CURVE_LABELS.length);
+    xlabels += `<text x="${x-10}" y="${h-8}" fill="#6B6156" font-size="10">${l}</text>`;
+  });
+
+  let bondDots = '', bondLabels = '';
+  selectedIds.forEach(id=>{
+    const b = ALL_INSTRUMENTS.find(x=>x.id===id);
+    const years = b.years !== undefined ? b.years : b.daysToMaturity/365;
+    const yieldVal = (b.ytm !== undefined ? b.ytm : b.bey) * 100;
+    const x = xForYears(years), y = yFor(yieldVal);
+    const dotColor = b.type === 'Corporate' ? '#4F9FC7' : '#8F5A39';
+    bondDots += `<circle cx="${x}" cy="${y}" r="5" fill="${dotColor}" stroke="#fff" stroke-width="1.5"/>`;
+    bondLabels += `<text x="${x+7}" y="${y+4}" fill="#16140F" font-size="10" font-weight="600">${id}</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridlines}
+    <polyline points="${parLine}" fill="none" stroke="#8F5A39" stroke-width="2" stroke-dasharray="3 3" opacity="0.6"/>
+    ${bondDots}${bondLabels}
+    ${xlabels}
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--muted);flex-wrap:wrap;">
+    <span><span style="display:inline-block;width:10px;height:2px;background:#8F5A39;margin-right:5px;"></span>Par curve</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#4F9FC7;border-radius:50%;margin-right:5px;"></span>Corporate</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#8F5A39;border-radius:50%;margin-right:5px;"></span>Sovereign / Bill</span>
+  </div>`;
+}
+
+/** Horizontal Z-spread bar chart for the selected coupon-bearing instruments. */
+function spreadBarChart(selectedIds){
+  const items = selectedIds.map(id=>ALL_INSTRUMENTS.find(x=>x.id===id)).filter(b=>b.type!=='Bill');
+  if(items.length===0) return '<div class="footnote">No coupon bonds selected.</div>';
+  const spreadsBp = items.map(b=>b.z*10000);
+  const maxAbs = Math.max(50, ...spreadsBp.map(Math.abs));
+  const barMax = Math.ceil(maxAbs/50)*50;
+  const rowH = 34, chartW = 400, labelW = 66, barAreaW = chartW-labelW-56;
+  let bars = '';
+  items.forEach((b,i)=>{
+    const spBp = b.z*10000;
+    const y = i*rowH;
+    const wpx = Math.max(2, (Math.abs(spBp)/barMax)*barAreaW);
+    const color = b.type==='Sovereign' ? '#8F5A39' : (spBp > 150 ? '#A32E22' : '#4F9FC7');
+    bars += `<text x="0" y="${y+16}" font-size="11" fill="#16140F" font-family="JetBrains Mono, monospace">${b.id}</text>
+      <rect x="${labelW}" y="${y+4}" width="${wpx}" height="18" rx="3" fill="${color}"/>
+      <text x="${labelW+wpx+8}" y="${y+16}" font-size="11" fill="#16140F" font-family="JetBrains Mono, monospace">${spBp.toFixed(0)}bp</text>`;
+  });
+  const totalH = items.length*rowH + 10;
+  return `<svg viewBox="0 0 ${chartW} ${totalH}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+}
+
+/** Illustrative typical IG/HY spread-by-rating curve (5Y benchmark, bp) — no free live source for
+    this exists, so these are representative market levels, not a data pull. Overlaid with our 3
+    actual computed Z-spreads to show where a specific credit sits vs. the generic curve for its
+    rating bucket. */
+const TYPICAL_SPREAD_BY_RATING = [
+  { bucket:'AAA', bp:20 }, { bucket:'AA', bp:35 }, { bucket:'A', bp:70 },
+  { bucket:'BBB', bp:115 }, { bucket:'BB', bp:220 }, { bucket:'B', bp:380 },
+];
+function ratingBucket(rating){
+  if(rating.startsWith('AAA')) return 'AAA';
+  if(rating.startsWith('AA')) return 'AA';
+  if(rating.startsWith('A')) return 'A';
+  if(rating.startsWith('BBB')) return 'BBB';
+  if(rating.startsWith('BB')) return 'BB';
+  return 'B';
+}
+function creditSpreadCurveSvg(){
+  const w=440, h=230, padL=40, padR=14, padT=14, padB=30;
+  const maxBp = 500;
+  const n = TYPICAL_SPREAD_BY_RATING.length;
+  const xForIdx = (i) => padL + (i/(n-1))*(w-padL-padR);
+  const yFor = (v) => padT + (1 - v/maxBp)*(h-padT-padB);
+
+  let gridlines = '';
+  [0,100,200,300,400,500].forEach(v=>{
+    const y = yFor(v);
+    gridlines += `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#DCD0BC" stroke-width="1" stroke-dasharray="4 4"/>`;
+    gridlines += `<text x="2" y="${y+4}" fill="#6B6156" font-size="10">${v}</text>`;
+  });
+  const pts = TYPICAL_SPREAD_BY_RATING.map((r,i)=>[xForIdx(i), yFor(r.bp)]);
+  const line = pts.map(p=>p.join(',')).join(' ');
+  const dots = pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="#8F5A39"/>`).join('');
+  const xlabels = TYPICAL_SPREAD_BY_RATING.map((r,i)=>`<text x="${xForIdx(i)-8}" y="${h-10}" fill="#6B6156" font-size="10">${r.bucket}</text>`).join('');
+
+  // overlay our 3 real corporates at their rating bucket's x position
+  const corporates = BONDS.filter(b=>b.type==='Corporate');
+  const bucketCounts = {};
+  const markers = corporates.map(b=>{
+    const bucket = ratingBucket(b.rating);
+    const idx = TYPICAL_SPREAD_BY_RATING.findIndex(r=>r.bucket===bucket);
+    const seenInBucket = bucketCounts[bucket] || 0;
+    bucketCounts[bucket] = seenInBucket + 1;
+    const jitter = seenInBucket * 11; // stagger same-bucket markers so labels don't overlap
+    const x = xForIdx(idx < 0 ? 2 : idx) + jitter;
+    const y = yFor(b.z*10000);
+    return `<rect x="${x-4}" y="${y-4}" width="8" height="8" fill="#4F9FC7" stroke="#fff" stroke-width="1" transform="rotate(45 ${x} ${y})"/>
+      <text x="${x+8}" y="${y+4}" font-size="9.5" font-weight="600" fill="#16140F">${b.id}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridlines}
+    <polyline points="${line}" fill="none" stroke="#8F5A39" stroke-width="2" stroke-dasharray="3 3" opacity="0.7"/>
+    ${dots}${markers}${xlabels}
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--muted);flex-wrap:wrap;">
+    <span><span style="display:inline-block;width:10px;height:2px;background:#8F5A39;margin-right:5px;"></span>Illustrative typical curve (5Y, bp)</span>
+    <span><span style="display:inline-block;width:8px;height:8px;background:#4F9FC7;margin-right:5px;transform:rotate(45deg);"></span>Our bonds (actual Z-spread)</span>
+  </div>`;
+}
+
+function renderComparisonPage(){
+  const chips = ALL_INSTRUMENTS.map(b=>{
+    const active = !!comparisonSelected[b.id];
+    return `<div class="compare-chip ${active?'active':''}" onclick="toggleComparison('${b.id}')">${b.id}</div>`;
+  }).join('');
+
+  const selectedIds = Object.keys(comparisonSelected).filter(id=>comparisonSelected[id]);
+
+  let rows = '';
+  selectedIds.forEach(id=>{
+    const b = ALL_INSTRUMENTS.find(x=>x.id===id);
+    const yieldVal = b.ytm !== undefined ? b.ytm : b.bey;
+    const maturityLabel = b.years !== undefined ? b.years+'Y' : Math.round(b.daysToMaturity/30.44)+'M';
+    rows += `<tr>
+      <td class="name-cell">${b.id}<br><span style="font-size:11px;color:var(--muted);">${b.name}</span></td>
+      <td><span class="rating-pill">${b.rating}</span></td>
+      <td class="num">${maturityLabel}</td>
+      <td class="num">${b.price.toFixed(2)}</td>
+      <td class="num">${pct(yieldVal,3)}</td>
+      <td class="num">${b.modD !== undefined ? b.modD.toFixed(2) : '—'}</td>
+      <td class="num">${b.conv !== undefined ? b.conv.toFixed(1) : '—'}</td>
+      <td class="num">${b.nominalSpread !== undefined ? bp(b.nominalSpread,0) : '—'}</td>
+      <td class="num">${b.z !== undefined ? bp(b.z,0) : '—'}</td>
+    </tr>`;
+  });
+  if(rows === '') rows = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Select at least one instrument above.</td></tr>`;
+
+  document.getElementById('page-comparison').innerHTML = `
+    <div>
+      <div class="section-label">Select Instruments to Compare</div>
+      <div class="compare-chips">${chips}</div>
+    </div>
+
+    <div class="split">
+      <div class="stat-card">
+        <div class="stat-label" style="margin-bottom:10px;">Curve Positioning</div>
+        ${selectedIds.length ? comparisonCurveSvg(selectedIds) : '<div class="footnote">Select instruments to plot against the curve.</div>'}
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" style="margin-bottom:10px;">Z-Spread Comparison</div>
+        ${spreadBarChart(selectedIds)}
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Side-by-Side Fundamentals</div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Instrument</th><th>Rating</th><th class="num">Maturity</th><th class="num">Price</th><th class="num">YTM</th><th class="num">Mod. Duration</th><th class="num">Convexity</th><th class="num">Nom. Spread</th><th class="num">Z-Spread</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout"><b>Reading this view:</b> a dot sitting above the dashed par curve is trading cheap relative to government paper at that maturity — higher yield than the curve implies for that tenor. A dot below the line is rich. Z-spread makes the same read precise: it's "cheap vs. rich," but measured against the whole curve rather than eyeballing one point on it.</div>
+
+    <div>
+      <div class="section-label">Relative Value Ranking — All Bonds, Cheapest First</div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Rank</th><th>Instrument</th><th>Rating</th><th class="num">Z-Spread</th><th class="num">Typical for Rating</th><th class="num">Residual</th></tr></thead>
+          <tbody>
+            ${BONDS.slice().sort((a,b2)=>b2.z-a.z).map((b,i)=>{
+              const bucket = ratingBucket(b.rating);
+              const typical = TYPICAL_SPREAD_BY_RATING.find(r=>r.bucket===bucket).bp;
+              const residual = b.z*10000 - typical;
+              return `<tr><td class="num">${i+1}</td><td class="name-cell">${b.id}</td><td><span class="rating-pill">${b.rating}</span></td><td class="num">${bp(b.z,0)}</td><td class="num">${typical}bp</td><td class="num ${residual>=0?'up':'down'}">${residual>=0?'+':''}${residual.toFixed(0)}bp</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:6px;">Ranked by raw Z-spread, widest first. Residual = actual Z-spread minus the illustrative typical spread for that rating bucket — positive means cheap for its rating, not just cheap in absolute terms. With only 6 bonds this is a toy version of a real screen; the same logic run over hundreds of names is what a systematic RV desk actually does.</div>
+    </div>
+
+    <div>
+      <div class="section-label">Credit Spread Curve by Rating</div>
+      <div class="stat-card">${creditSpreadCurveSvg()}</div>
+      <div class="callout" style="margin-top:14px;"><b>No free live source for this one:</b> the dashed line is a representative, illustrative spread-by-rating curve, not a data pull — there's no free public feed for corporate credit curves the way there is for Treasuries. What's real: the diamond markers, which are our 3 bonds' actual computed Z-spreads. Apple sits almost exactly on the generic AA curve; JPMorgan and Tesla both trade above their generic bucket, which is either idiosyncratic risk premium or this specific mock pricing — worth knowing which, before trusting the read.</div>
+    </div>
+
+    ${explainerBox(`A bond trading above the dashed par curve is cheap for its maturity — higher yield than the government curve implies. Below the line, it's rich. Z-spread is the same read made precise, using the whole curve instead of eyeballing one point. The credit spread curve above adds a second axis: is this bond cheap/rich vs. the government curve, or cheap/rich vs. its own rating peers — those are different questions, and a bond can answer them differently, which is exactly what's worth checking before assuming "wide spread" automatically means "bad credit."`)}
+  `;
+}
+
+/* =========================================================================
+   RENDER — DERIVATIVES (Treasury futures, swaps, DV01 hedge calculator)
+   ========================================================================= */
+function renderDerivativesPage(){
+  const futuresRows = FUTURES_SPEC.map(spec=>{
+    const f = futuresContractDV01(spec);
+    return `<tr>
+      <td class="name-cell">${spec.id}<br><span style="font-size:11px;color:var(--muted);">${spec.label}</span></td>
+      <td class="num">${pct(f.parYield,2)}</td>
+      <td class="num">${f.ctdModD.toFixed(2)}</td>
+      <td class="num">$${f.futuresDV01PerContract.toFixed(0)}</td>
+      <td class="num">${spec.convFactor.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  const swapRows = SWAP_TENORS.map(t=>{
+    const fixed = swapParRate(t);
+    const treasuryY = parCurveFn(t);
+    const dv01_1mm = swapDV01Per1mm(t);
+    return `<tr>
+      <td class="name-cell">${t}Y</td>
+      <td class="num">${pct(fixed,3)}</td>
+      <td class="num">${pct(treasuryY,3)}</td>
+      <td class="num ${SWAP_SPREAD_BP[t]>=0?'up':'down'}">${SWAP_SPREAD_BP[t]}bp</td>
+      <td class="num">$${dv01_1mm.toFixed(0)}</td>
+    </tr>`;
+  }).join('');
+
+  const p = computePortfolio();
+  const dollarDV01 = portfolioValue * p.wDV01 / 100;
+
+  document.getElementById('page-derivatives').innerHTML = `
+    <div>
+      <div class="section-label">Treasury Futures (Illustrative CTD/Conversion Factors)</div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Contract</th><th class="num">CTD Proxy Yield</th><th class="num">CTD Mod. Duration</th><th class="num">Futures DV01/Contract</th><th class="num">Conv. Factor</th></tr></thead>
+          <tbody>${futuresRows}</tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:6px;">No live deliverable-basket feed exists for this — the CTD is an illustrative on-the-run-style proxy (par-priced note at today's curve yield for that tenor), not a live CTD screen. Futures DV01 ≈ CTD DV01 / conversion factor, per $100,000 contract — the standard approximation, not the full delivery-option-adjusted number a real desk would run.</div>
+    </div>
+
+    <div>
+      <div class="section-label">Par Swap Rates</div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Tenor</th><th class="num">Par Swap Rate</th><th class="num">Treasury Yield</th><th class="num">Swap Spread</th><th class="num">DV01 / $1mm Notional</th></tr></thead>
+          <tbody>${swapRows}</tbody>
+        </table>
+      </div>
+      <div class="callout" style="margin-top:10px;"><b>Why swap spreads are negative:</b> USD swap spreads have run structurally negative for years, most negative at the long end — dealer balance-sheet costs since 2008, heavy Treasury issuance cheapening Treasuries relative to swaps, and insurance/LDI accounts receiving fixed on swaps to hedge liabilities rather than buying long Treasuries. The spread levels here are illustrative (no free live feed), but the negative sign and the shape — more negative further out — are real and well-documented, not invented for this platform.</div>
+      <div class="footnote" style="margin-top:6px;">Single-curve simplification: real swap desks discount off SOFR/OIS, not the Treasury curve. Fixed-leg DV01 approximated as a par bond with the same coupon/maturity — floating-leg DV01 ≈0 for a just-reset swap, the standard textbook shortcut.</div>
+    </div>
+
+    <div>
+      <div class="section-label">Portfolio DV01 Hedge Calculator</div>
+      <div class="grid4">
+        <div class="stat-card hero"><div class="stat-label">Current Portfolio DV01</div><div class="stat-value">${money(dollarDV01)}</div><div class="stat-sub">per 1bp, from Portfolio &amp; Risk tab</div></div>
+      </div>
+      <div class="field-row" style="margin-top:12px;">
+        <label>Hedge instrument</label>
+        <select id="hedgeInstrument" onchange="renderHedgeResult()">
+          <optgroup label="Futures">
+            ${FUTURES_SPEC.map(s=>`<option value="fut:${s.id}">${s.id} — ${s.label}</option>`).join('')}
+          </optgroup>
+          <optgroup label="Swaps">
+            ${SWAP_TENORS.map(t=>`<option value="swap:${t}">${t}Y Swap</option>`).join('')}
+          </optgroup>
+        </select>
+        <label>Hedge ratio</label>
+        <input type="number" id="hedgeRatio" value="100" min="0" max="200" step="10" style="width:70px;" onchange="renderHedgeResult()"> %
+      </div>
+      <div id="hedgeResult" style="margin-top:12px;"></div>
+    </div>
+
+    ${explainerBox(`Everything on the Portfolio &amp; Risk and Scenarios tabs <b>measures</b> rate risk — this tab is the other half: how a real desk actually <b>manages</b> it without unwinding the underlying bonds. Selling Treasury futures or paying fixed on a swap both reduce net DV01; the hedge calculator sizes either to your actual portfolio exposure. A 100% hedge ratio targets flat DV01 — a real desk rarely runs exactly flat, but knowing the size of a full hedge is the starting point for deciding how much risk to actually carry.`)}
+  `;
+  renderHedgeResult();
+}
+
+function renderHedgeResult(){
+  const el = document.getElementById('hedgeResult');
+  if(!el) return;
+  const instrumentVal = document.getElementById('hedgeInstrument').value;
+  const ratioPct = parseFloat(document.getElementById('hedgeRatio').value) || 0;
+  const p = computePortfolio();
+  const dollarDV01 = portfolioValue * p.wDV01 / 100;
+  const targetHedgeDV01 = dollarDV01 * (ratioPct/100);
+
+  let resultHtml = '';
+  if(instrumentVal.startsWith('fut:')){
+    const id = instrumentVal.split(':')[1];
+    const spec = FUTURES_SPEC.find(s=>s.id===id);
+    const f = futuresContractDV01(spec);
+    const contracts = -targetHedgeDV01 / f.futuresDV01PerContract;
+    // contracts is the SIGNED futures position needed: negative = short (sell), positive = long (buy) —
+    // a positive portfolio DV01 (long duration) needs a negative/short futures position to offset it.
+    const direction = contracts < 0 ? 'Sell' : 'Buy';
+    resultHtml = `
+      <div class="grid4">
+        <div class="stat-card hero"><div class="stat-label">Contracts</div><div class="stat-value">${Math.abs(contracts).toFixed(1)}</div><div class="stat-sub">${direction} ${spec.id} to hedge</div></div>
+        <div class="stat-card"><div class="stat-label">DV01 / Contract</div><div class="stat-value">$${f.futuresDV01PerContract.toFixed(0)}</div></div>
+        <div class="stat-card"><div class="stat-label">Notional Hedged</div><div class="stat-value">${money(Math.abs(contracts)*spec.notional)}</div><div class="stat-sub">face value, ${spec.notional.toLocaleString()}/contract</div></div>
+        <div class="stat-card"><div class="stat-label">Target Hedge DV01</div><div class="stat-value">${money(targetHedgeDV01)}</div></div>
+      </div>
+    `;
+  } else {
+    const tenor = parseInt(instrumentVal.split(':')[1]);
+    const dv01_1mm = swapDV01Per1mm(tenor);
+    const notionalNeeded = -targetHedgeDV01 / dv01_1mm * 1000000;
+    // notionalNeeded is signed as a receive-fixed position: negative means the hedge is actually
+    // pay-fixed — a positive portfolio DV01 (long duration) needs to pay fixed to offset it.
+    const direction = notionalNeeded < 0 ? 'Pay fixed' : 'Receive fixed';
+    resultHtml = `
+      <div class="grid4">
+        <div class="stat-card hero"><div class="stat-label">Swap Notional</div><div class="stat-value">${money(Math.abs(notionalNeeded))}</div><div class="stat-sub">${direction}, ${tenor}Y</div></div>
+        <div class="stat-card"><div class="stat-label">DV01 / $1mm</div><div class="stat-value">$${dv01_1mm.toFixed(0)}</div></div>
+        <div class="stat-card"><div class="stat-label">Par Fixed Rate</div><div class="stat-value">${pct(swapParRate(tenor),3)}</div></div>
+        <div class="stat-card"><div class="stat-label">Target Hedge DV01</div><div class="stat-value">${money(targetHedgeDV01)}</div></div>
+      </div>
+    `;
+  }
+  el.innerHTML = resultHtml + `<div class="footnote" style="margin-top:8px;">A long-duration portfolio (positive DV01) needs to <b>sell</b> futures or <b>pay fixed</b> on a swap to hedge — both lose money if rates fall, offsetting the bonds' gain, and vice versa. This calculator sizes the trade; it doesn't place it.</div>`;
+}
+
+/* =========================================================================
+   NAV / PAGE SWITCH
+   ========================================================================= */
+const PAGE_META = {
+  dashboard: { heading:'Dashboard', sub: 'Today\'s curve and bond watchlist' },
+  valuation: { heading:'Bond Valuation', sub: 'Price, yield, duration, convexity, and spread — computed live' },
+  curve: { heading:'Yield Curve', sub: 'Par curve, bootstrapped zero curve, forwards, and shape signals' },
+  portfolio: { heading:'Portfolio & Risk', sub: 'Weighted YTM, duration, DV01, convexity, and VaR' },
+  scenarios: { heading:'Scenarios', sub: 'Macro-driven yield scenarios and curve shocks, translated to price' },
+  comparison: { heading:'Comparison', sub: 'Side-by-side fundamentals and relative value across a peer set' },
+  derivatives: { heading:'Derivatives', sub: 'Treasury futures, swap rates, and a portfolio DV01 hedge calculator' },
+};
+
+function showPage(key){
+  Object.keys(PAGE_META).forEach(k=>{
+    document.getElementById('page-'+k).style.display = (k===key) ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.nav-link').forEach(el=>{
+    el.classList.toggle('active', el.dataset.page === key);
+  });
+  document.getElementById('pageHeading').textContent = PAGE_META[key].heading;
+  document.getElementById('pageSub').textContent = PAGE_META[key].sub;
+
+  if(key==='dashboard') renderDashboard();
+  if(key==='valuation') renderValuationPage();
+  if(key==='curve') renderCurvePage();
+  if(key==='portfolio') renderPortfolioPage();
+  if(key==='scenarios') renderScenariosPage();
+  if(key==='comparison') renderComparisonPage();
+  if(key==='derivatives') renderDerivativesPage();
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+renderTicker();
+showPage('dashboard');
+</script>
+
+</body>
+</html>
